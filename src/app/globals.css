@@ -1,26 +1,42 @@
 @import "tailwindcss";
 
+/* ── Design tokens — ported from approved prototype variant v3 ──────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --rc-bg: #f7f8fb;
+  --rc-surface: #ffffff;
+  --rc-ink: #0a1f44;       /* deep navy */
+  --rc-ink-2: #1f2937;
+  --rc-muted: #64748b;
+  --rc-line: #e5e9f2;
+  --rc-line-soft: #eef1f6;
+  --rc-blue: #1d4ed8;
+  --rc-blue-2: #2563eb;
+  --rc-cyan: #00bfd8;
+  --rc-green: #10b981;
+  --rc-amber: #f59e0b;
+  --rc-red: #ef4444;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--rc-bg);
+  --color-surface: var(--rc-surface);
+  --color-ink: var(--rc-ink);
+  --color-ink-2: var(--rc-ink-2);
+  --color-muted: var(--rc-muted);
+  --color-line: var(--rc-line);
+  --color-line-soft: var(--rc-line-soft);
+  --color-brand: var(--rc-blue);
+  --color-brand-2: var(--rc-blue-2);
+  --color-cyan: var(--rc-cyan);
+  --color-success: var(--rc-green);
+  --radius-rc: 14px;
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--rc-bg);
+  color: var(--rc-ink);
+  font-family: var(--font-inter), "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
