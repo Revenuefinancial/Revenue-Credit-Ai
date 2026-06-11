@@ -71,7 +71,7 @@ export async function sendSMS({ to, body }: SMSArgs): Promise<void> {
 }
 
 // ── Event helpers (called from server actions / webhook) ────────────────
-const appUrl = () => process.env.NEXT_PUBLIC_APP_URL ?? "https://rca-flame.vercel.app";
+const appUrl = () => process.env.NEXT_PUBLIC_APP_URL ?? "https://score-logic-pro.vercel.app";
 
 function shell(title: string, body: string): string {
   return `<div style="font-family:Inter,system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0a1f44">

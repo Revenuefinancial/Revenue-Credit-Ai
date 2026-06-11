@@ -7,7 +7,7 @@ import { PLANS, type PlanId } from "@/lib/config";
 export const runtime = "nodejs";
 
 const appUrl = () =>
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://rca-flame.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://score-logic-pro.vercel.app";
 
 // Creates a Stripe Checkout Session for the chosen plan and returns its URL.
 // Each checkout is a one-time payment (one package / one dispute round). DFY's
