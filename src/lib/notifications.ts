@@ -73,12 +73,30 @@ export async function sendSMS({ to, body }: SMSArgs): Promise<void> {
 // ── Event helpers (called from server actions / webhook) ────────────────
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL ?? "https://score-logic-pro.vercel.app";
 
+// Branded email shell — mirrors app/emails/render.mjs and globals.css tokens.
+// Table layout + inline styles for email-client compatibility.
 function shell(title: string, body: string): string {
-  return `<div style="font-family:Inter,system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0a1f44">
-    <h2 style="color:#0a1f44;margin:0 0 12px">${title}</h2>
-    <div style="font-size:15px;line-height:1.6;color:#1f2937">${body}</div>
-    <p style="margin-top:24px;font-size:13px;color:#64748b">${BRAND.name} · ${BRAND.parent}</p>
-  </div>`;
+  const FONT =
+    "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif";
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><title>${title}</title></head>
+<body style="margin:0;padding:0;background:#f7f8fb;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f8fb;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:100%;">
+        <tr><td style="height:4px;border-radius:14px 14px 0 0;background:#1d4ed8;background-image:linear-gradient(90deg,#1d4ed8 0%,#00bfd8 100%);"></td></tr>
+        <tr><td style="background:#ffffff;border:1px solid #e5e9f2;border-top:none;border-radius:0 0 14px 14px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr><td style="padding:28px 40px 8px;"><span style="font-family:${FONT};font-size:19px;font-weight:800;letter-spacing:-.02em;color:#0a1f44;">Score Logic <span style="color:#1d4ed8;">Pro</span></span></td></tr>
+            <tr><td style="padding:6px 40px 0;"><h1 style="margin:0;font-family:${FONT};font-size:23px;line-height:1.25;font-weight:800;color:#0a1f44;">${title}</h1></td></tr>
+            <tr><td style="padding:14px 40px 8px;font-family:${FONT};font-size:15px;line-height:1.6;color:#1f2937;">${body}</td></tr>
+            <tr><td style="padding:8px 40px 0;"><hr style="border:none;border-top:1px solid #eef1f6;margin:20px 0 0;"></td></tr>
+            <tr><td style="padding:16px 40px 30px;font-family:${FONT};font-size:12px;line-height:1.6;color:#64748b;"><strong style="color:#0a1f44;">Score Logic Pro</strong> · A ${BRAND.parent} company<br><span style="color:#94a3b8;">🔒 Bank-level encryption · Your data is never sold</span></td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
 }
 
 export async function notifyReportReceived(to: string | null) {
