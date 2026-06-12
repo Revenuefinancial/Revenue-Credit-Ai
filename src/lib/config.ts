@@ -5,8 +5,8 @@
 // Update `amountCents` + `interval` in one place when the real prices land.
 
 export const BRAND = {
-  // Contract title is "Score Logic Pro"; branding doc leans "Revenue Credit AI".
-  // Unconfirmed — kept in one place so the final name is a one-line change.
+  // Brand consolidated to "Revenue Credit AI" (contract title was "Score Logic Pro").
+  // Kept in one place so the name stays a one-line change.
   name: "Revenue Credit AI",
   parent: "Revenue Financial Services",
   supportEmail: "support@revenuecreditai.com",

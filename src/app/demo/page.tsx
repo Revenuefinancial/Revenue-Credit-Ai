@@ -1,0 +1,653 @@
+"use client";
+
+// /demo — a full, self-contained walkthrough of the platform.
+// No login, no Stripe, nothing is saved. Every screen is a pixel-faithful
+// replica of the real app (same Tailwind classes) rendered with sample data.
+//
+// A chapter stepper at the bottom walks through the whole client + admin
+// journey end to end. Reachable by URL; linked from the homepage and the
+// global Help panel.
+
+import { useState } from "react";
+import Link from "next/link";
+import { BRAND, PLANS, formatPrice } from "@/lib/config";
+
+// ── Sample data ──────────────────────────────────────────────────────
+const CLIENT = {
+  name: "Marcus Johnson",
+  first: "Marcus",
+  email: "marcus.j@email.com",
+  phone: "(404) 555-0148",
+  joined: "Jun 3, 2026",
+};
+const REPORT = { file: "Marcus-Johnson-3Bureau-Report.pdf", date: "Jun 8, 2026" };
+const LETTER = {
+  round: 1,
+  file: "Round-1-Dispute-Equifax.pdf",
+  notes: "Disputing 4 items — 2 collections, 1 late payment, 1 hard inquiry.",
+  date: "Jun 10, 2026",
+};
+
+type Screen = "landing" | "dashboard" | "admin" | "adminDetail";
+type DashState = "empty" | "report" | "letter";
+
+type Chapter = {
+  title: string;
+  caption: string;
+  screen: Screen;
+  dash?: DashState;
+};
+
+const CHAPTERS: Chapter[] = [
+  {
+    title: "The homepage",
+    caption:
+      "This is the public page new clients land on. It explains the offer, shows pricing, and starts signup. Everything below is what they see AFTER they create an account.",
+    screen: "landing",
+  },
+  {
+    title: "A brand-new dashboard",
+    caption:
+      "Right after signing up and choosing a plan, this is the client's home base. Step 1 sends them to pull their 3-bureau report; Step 2 is where they upload it.",
+    screen: "dashboard",
+    dash: "empty",
+  },
+  {
+    title: "Report uploaded",
+    caption:
+      "The client pulled their report and uploaded the PDF. It now shows under Step 2. Step 3 stays empty until your team sends letters back.",
+    screen: "dashboard",
+    dash: "report",
+  },
+  {
+    title: "Your admin panel",
+    caption:
+      "Your team's view. Every client at a glance — their plan, status, how many reports and letters they have, and what they've paid.",
+    screen: "admin",
+  },
+  {
+    title: "Opening a client",
+    caption:
+      "Click 'Manage' on any client to see their payments, download the report they uploaded, and send a finished dispute letter back.",
+    screen: "adminDetail",
+  },
+  {
+    title: "Letters delivered",
+    caption:
+      "The moment you upload a letter, the client is emailed and texted automatically — and it appears under Step 3 for them to download. The loop is closed.",
+    screen: "dashboard",
+    dash: "letter",
+  },
+];
+
+export default function DemoPage() {
+  const [i, setI] = useState(0);
+  const ch = CHAPTERS[i];
+
+  return (
+    <div className="min-h-screen bg-bg pb-32">
+      {/* Demo-mode banner */}
+      <div className="sticky top-0 z-40 flex items-center justify-between bg-ink px-4 py-2 text-[13px] text-white">
+        <span className="flex items-center gap-2">
+          <span className="rounded bg-white/15 px-2 py-0.5 text-[11px] font-bold tracking-wide">
+            DEMO MODE
+          </span>
+          <span className="hidden text-white/85 sm:inline">
+            Sample data · no login · nothing is saved
+          </span>
+        </span>
+        <Link
+          href="/"
+          className="rounded-md bg-white/15 px-3 py-1 text-xs font-semibold transition hover:bg-white/25"
+        >
+          Exit demo
+        </Link>
+      </div>
+
+      {/* Current screen */}
+      <div className="px-3 py-5">
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_30px_80px_-40px_rgba(10,31,68,0.35)]">
+          {/* Faux browser chrome for that "real app" feel */}
+          <div className="flex items-center gap-2 border-b border-line bg-bg px-4 py-2.5">
+            <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+            <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+            <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+            <span className="ml-3 flex-1 truncate rounded-md bg-surface px-3 py-1 text-center text-xs text-muted">
+              app.revenuecreditai.com
+              {ch.screen === "dashboard"
+                ? "/dashboard"
+                : ch.screen.startsWith("admin")
+                  ? "/admin"
+                  : ""}
+            </span>
+          </div>
+
+          <div className="max-h-[70vh] overflow-y-auto">
+            {ch.screen === "landing" && <DemoLanding />}
+            {ch.screen === "dashboard" && (
+              <DemoDashboard state={ch.dash ?? "empty"} />
+            )}
+            {ch.screen === "admin" && <DemoAdmin />}
+            {ch.screen === "adminDetail" && (
+              <DemoAdminDetail withLetter={false} />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Chapter stepper */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-surface/95 backdrop-blur">
+        <div className="mx-auto max-w-4xl px-4 py-3 pr-24">
+          <div className="flex items-start gap-4">
+            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
+              {i + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-ink">{ch.title}</h3>
+                <span className="text-xs text-muted">
+                  Chapter {i + 1} of {CHAPTERS.length}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted">
+                {ch.caption}
+              </p>
+            </div>
+            <div className="flex flex-none items-center gap-2">
+              <button
+                onClick={() => setI(Math.max(0, i - 1))}
+                disabled={i === 0}
+                className="rounded-rc border border-line px-3 py-2 text-sm font-medium text-ink-2 transition disabled:opacity-40 hover:bg-line-soft"
+              >
+                ← Back
+              </button>
+              {i < CHAPTERS.length - 1 ? (
+                <button
+                  onClick={() => setI(i + 1)}
+                  className="rounded-rc bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-2"
+                >
+                  Next →
+                </button>
+              ) : (
+                <Link
+                  href="/signup"
+                  className="rounded-rc bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-2"
+                >
+                  Start for real →
+                </Link>
+              )}
+            </div>
+          </div>
+          {/* progress dots */}
+          <div className="mt-2 flex gap-1.5 pl-13">
+            {CHAPTERS.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setI(idx)}
+                aria-label={`Go to chapter ${idx + 1}`}
+                className={`h-1.5 flex-1 rounded-full transition ${
+                  idx <= i ? "bg-brand" : "bg-line"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Screen: Landing (faithful replica of the public homepage) ────────
+function DemoLanding() {
+  return (
+    <main className="text-ink">
+      <div className="bg-ink px-4 py-2 text-center text-[13px] text-white/90">
+        🔒 <b className="font-semibold">Bank-level encryption</b> · Your data is
+        never sold · SOC-2 ready infrastructure
+      </div>
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+        <span className="text-lg font-bold tracking-tight">{BRAND.name}</span>
+        <div className="hidden items-center gap-7 text-sm text-muted md:flex">
+          <span>How it works</span>
+          <span>Pricing</span>
+          <span>Success stories</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-ink">Sign in</span>
+          <span className="rounded-[10px] bg-brand px-4 py-2 text-sm font-semibold text-white">
+            Free score check
+          </span>
+        </div>
+      </nav>
+
+      <header className="mx-auto grid max-w-6xl items-center gap-12 px-6 pb-12 pt-6 md:grid-cols-2">
+        <div>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-muted">
+            <span className="h-2 w-2 rounded-full bg-success" />
+            Trusted by 14,200+ clients across 47 states
+          </div>
+          <h1 className="text-4xl font-extrabold leading-[1.1] tracking-tight md:text-5xl">
+            Raise your credit score{" "}
+            <span className="text-brand">82 points on average</span> — in 90
+            days.
+          </h1>
+          <p className="mt-5 max-w-lg text-lg text-muted">
+            Upload your three-bureau report. Our AI drafts professional dispute
+            letters in seconds — pick DIY to mail them yourself, or
+            Done-For-You and we&apos;ll certified-mail every round.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <span className="rounded-[12px] bg-ink px-6 py-3 font-semibold text-white">
+              Pull free credit report →
+            </span>
+            <span className="rounded-[12px] border border-line bg-surface px-6 py-3 font-medium text-ink">
+              See how it works
+            </span>
+          </div>
+        </div>
+
+        <aside className="rounded-2xl border border-line bg-surface p-6 shadow-[0_20px_50px_-20px_rgba(10,31,68,0.25)]">
+          <div className="mb-4 flex items-center justify-between">
+            <h4 className="text-sm font-semibold">
+              Your projected score · 90 days
+            </h4>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-success">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+              LIVE PREVIEW
+            </span>
+          </div>
+          <div className="relative flex flex-col items-center py-2">
+            <svg viewBox="0 0 240 130" className="w-full max-w-[260px]">
+              <defs>
+                <linearGradient id="demoScoreGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#ef4444" />
+                  <stop offset="50%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#10b981" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M 20 120 A 100 100 0 0 1 220 120"
+                fill="none"
+                stroke="#eef1f6"
+                strokeWidth="16"
+                strokeLinecap="round"
+              />
+              <path
+                d="M 20 120 A 100 100 0 0 1 220 120"
+                fill="none"
+                stroke="url(#demoScoreGrad)"
+                strokeWidth="16"
+                strokeLinecap="round"
+                strokeDasharray="314"
+                strokeDashoffset="70"
+              />
+            </svg>
+            <div className="-mt-10 text-center">
+              <div className="text-4xl font-extrabold">742</div>
+              <div className="text-xs text-muted">Projected</div>
+            </div>
+          </div>
+          <div className="mt-2 rounded-lg bg-line-soft px-3 py-2 text-center text-sm font-semibold text-success">
+            ↑ +82 pts vs. today (660)
+          </div>
+        </aside>
+      </header>
+
+      {/* Pricing */}
+      <section className="mx-auto max-w-5xl px-6 py-12">
+        <div className="mb-10 text-center">
+          <h2 className="text-3xl font-bold tracking-tight">
+            Simple, fair pricing.
+          </h2>
+          <p className="mt-2 text-muted">No subscriptions. No surprise fees.</p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {Object.values(PLANS).map((plan) => {
+            const price = formatPrice(plan);
+            return (
+              <article
+                key={plan.id}
+                className={`relative rounded-2xl border bg-surface p-8 ${
+                  plan.featured
+                    ? "border-brand shadow-[0_20px_50px_-20px_rgba(29,78,216,0.4)]"
+                    : "border-line"
+                }`}
+              >
+                {plan.featured && (
+                  <span className="absolute -top-3 left-8 rounded-full bg-brand px-3 py-1 text-[11px] font-bold tracking-wide text-white">
+                    MOST POPULAR
+                  </span>
+                )}
+                <h3 className="text-xl font-bold">{plan.name}</h3>
+                <p className="mt-1 text-sm text-muted">{plan.tagline}</p>
+                <div className="mt-5 flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold">{price.amount}</span>
+                  <span className="text-sm text-muted">{price.unit}</span>
+                </div>
+                <ul className="mt-6 space-y-2.5 text-sm">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex gap-2">
+                      <span className="text-success">✓</span>
+                      <span className="text-ink-2">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                <span
+                  className={`mt-7 block rounded-[12px] px-6 py-3 text-center font-semibold ${
+                    plan.featured
+                      ? "bg-brand text-white"
+                      : "border border-line text-ink"
+                  }`}
+                >
+                  {plan.featured ? "Get Done-For-You" : "Start with DIY"}
+                </span>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+// ── Screen: Dashboard (faithful replica, 3 states) ───────────────────
+function DemoDashboard({ state }: { state: DashState }) {
+  const hasReport = state === "report" || state === "letter";
+  const hasLetter = state === "letter";
+  return (
+    <div className="bg-bg">
+      <header className="border-b border-line bg-surface">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
+          <span className="font-mono text-sm font-semibold text-brand">
+            {BRAND.name}
+          </span>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="hidden text-muted sm:inline">{CLIENT.email}</span>
+            <span className="font-semibold text-ink-2">Sign out</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-5 py-8">
+        <h1 className="text-2xl font-bold text-ink">
+          Welcome, {CLIENT.first}
+        </h1>
+        <p className="mt-1 text-muted">Your Done-For-You plan is active.</p>
+
+        <DemoSection title="Step 1 — Pull your credit report">
+          <p className="mb-4 text-sm text-muted">
+            Use our partner link to pull all three bureaus in minutes, then
+            upload the report below.
+          </p>
+          <span className="inline-block rounded-rc bg-brand px-5 py-3 font-semibold text-white">
+            Pull my report ↗
+          </span>
+        </DemoSection>
+
+        <DemoSection title="Step 2 — Upload your credit report">
+          <div className="rounded-rc border-2 border-dashed border-line bg-bg px-5 py-8 text-center text-sm text-muted">
+            Drag &amp; drop your report PDF here, or click to browse.
+          </div>
+          {hasReport && (
+            <ul className="mt-5 divide-y divide-line border-t border-line">
+              <li className="flex items-center justify-between py-3 text-sm">
+                <span className="truncate text-ink-2">
+                  {REPORT.file}
+                  <span className="ml-2 text-muted">{REPORT.date}</span>
+                </span>
+                <span className="text-sm font-semibold text-brand">
+                  Download
+                </span>
+              </li>
+            </ul>
+          )}
+        </DemoSection>
+
+        <DemoSection title="Step 3 — Your dispute letters">
+          {hasLetter ? (
+            <ul className="divide-y divide-line">
+              <li className="flex items-center justify-between py-3 text-sm">
+                <span className="text-ink-2">
+                  <span className="font-semibold">Round {LETTER.round}</span> ·{" "}
+                  {LETTER.file}
+                  <span className="block text-xs text-muted">
+                    {LETTER.notes}
+                  </span>
+                </span>
+                <span className="text-sm font-semibold text-brand">
+                  Download letter
+                </span>
+              </li>
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">
+              No letters yet. Once our team prepares your dispute letters,
+              they&apos;ll appear here for download.
+            </p>
+          )}
+        </DemoSection>
+      </main>
+    </div>
+  );
+}
+
+// ── Screen: Admin client list (faithful replica) ─────────────────────
+const DEMO_ROWS = [
+  {
+    name: CLIENT.name,
+    email: CLIENT.email,
+    plan: "Done-For-You",
+    status: "Active",
+    reports: 1,
+    letters: 1,
+    paid: 14900,
+  },
+  {
+    name: "Priya Rao",
+    email: "priya.r@email.com",
+    plan: "DIY Credit Repair",
+    status: "Active",
+    reports: 1,
+    letters: 0,
+    paid: 4900,
+  },
+  {
+    name: "Danielle Kim",
+    email: "danielle.k@email.com",
+    plan: "Done-For-You",
+    status: "Pending",
+    reports: 0,
+    letters: 0,
+    paid: 0,
+  },
+];
+
+function DemoAdmin() {
+  const revenue = DEMO_ROWS.reduce((s, r) => s + r.paid, 0);
+  return (
+    <div className="bg-bg">
+      <header className="border-b border-line bg-surface">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+          <span className="font-mono text-sm font-semibold text-brand">
+            {BRAND.name} · Admin
+          </span>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="font-semibold text-ink-2">My dashboard</span>
+            <span className="font-semibold text-ink-2">Sign out</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-5 py-8">
+        <h1 className="text-2xl font-bold text-ink">Clients</h1>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <DemoStat label="Clients" value={String(DEMO_ROWS.length)} />
+          <DemoStat label="Reports uploaded" value="2" />
+          <DemoStat
+            label="Revenue (paid)"
+            value={`$${(revenue / 100).toLocaleString()}`}
+          />
+        </div>
+
+        <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-line bg-bg/50 text-xs uppercase tracking-wide text-muted">
+              <tr>
+                <th className="px-5 py-3">Client</th>
+                <th className="px-5 py-3">Plan</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Reports</th>
+                <th className="px-5 py-3">Letters</th>
+                <th className="px-5 py-3">Paid</th>
+                <th className="px-5 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {DEMO_ROWS.map((r) => (
+                <tr key={r.email} className="hover:bg-bg/40">
+                  <td className="px-5 py-3">
+                    <div className="font-semibold text-ink">{r.name}</div>
+                    <div className="text-xs text-muted">{r.email}</div>
+                  </td>
+                  <td className="px-5 py-3 text-ink-2">{r.plan}</td>
+                  <td className="px-5 py-3">
+                    <DemoBadge status={r.status} />
+                  </td>
+                  <td className="px-5 py-3 text-ink-2">{r.reports}</td>
+                  <td className="px-5 py-3 text-ink-2">{r.letters}</td>
+                  <td className="px-5 py-3 text-ink-2">
+                    ${(r.paid / 100).toLocaleString()}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <span className="font-semibold text-brand">Manage →</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ── Screen: Admin client detail (faithful replica) ───────────────────
+function DemoAdminDetail({ withLetter }: { withLetter: boolean }) {
+  return (
+    <div className="bg-bg">
+      <header className="border-b border-line bg-surface">
+        <div className="mx-auto max-w-4xl px-5 py-4">
+          <span className="text-sm font-semibold text-brand">
+            ← All clients
+          </span>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-4xl px-5 py-8">
+        <h1 className="text-2xl font-bold text-ink">{CLIENT.name}</h1>
+        <p className="mt-1 text-sm text-muted">
+          {CLIENT.email} · {CLIENT.phone} · joined {CLIENT.joined}
+        </p>
+
+        <DemoSection title="Payments & service selection">
+          <ul className="divide-y divide-line">
+            <li className="flex items-center justify-between py-3 text-sm">
+              <span className="text-ink-2">
+                <span className="font-semibold">Done-For-You</span> · per round ·{" "}
+                {CLIENT.joined}
+              </span>
+              <span className="flex items-center gap-3">
+                <span className="text-ink-2">$149</span>
+                <span className="rounded-full bg-[var(--rc-green)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--rc-green)]">
+                  active
+                </span>
+              </span>
+            </li>
+          </ul>
+        </DemoSection>
+
+        <DemoSection title="Uploaded credit reports">
+          <ul className="divide-y divide-line">
+            <li className="flex items-center justify-between py-3 text-sm">
+              <span className="truncate text-ink-2">
+                {REPORT.file}
+                <span className="ml-2 text-muted">{REPORT.date}</span>
+              </span>
+              <span className="text-sm font-semibold text-brand">Download</span>
+            </li>
+          </ul>
+        </DemoSection>
+
+        <DemoSection title="Upload completed dispute letter">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div className="rounded-rc border-2 border-dashed border-line bg-bg px-5 py-6 text-center text-sm text-muted">
+              Choose the finished letter PDF to send back to the client.
+            </div>
+            <span className="rounded-rc bg-brand px-5 py-3 text-center font-semibold text-white">
+              Send letter
+            </span>
+          </div>
+        </DemoSection>
+
+        <DemoSection title="Dispute letters sent">
+          {withLetter ? (
+            <ul className="divide-y divide-line">
+              <li className="flex items-center justify-between py-3 text-sm">
+                <span className="text-ink-2">
+                  <span className="font-semibold">Round {LETTER.round}</span> ·{" "}
+                  {LETTER.file}
+                </span>
+                <span className="text-sm font-semibold text-brand">
+                  Download
+                </span>
+              </li>
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">No letters sent yet.</p>
+          )}
+        </DemoSection>
+      </main>
+    </div>
+  );
+}
+
+// ── Shared demo presentational helpers (mirror the real Section/Stat) ─
+function DemoSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-6 rounded-2xl border border-line bg-surface p-6 shadow-sm">
+      <h2 className="mb-4 text-lg font-bold text-ink">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function DemoStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
+      <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
+      <div className="mt-1 text-2xl font-bold text-ink">{value}</div>
+    </div>
+  );
+}
+
+function DemoBadge({ status }: { status: string }) {
+  const cls =
+    status === "Active"
+      ? "bg-[var(--rc-green)]/10 text-[var(--rc-green)]"
+      : status === "Pending"
+        ? "bg-[var(--rc-amber)]/10 text-[var(--rc-amber)]"
+        : "bg-line-soft text-muted";
+  return (
+    <span
+      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}
+    >
+      {status}
+    </span>
+  );
+}

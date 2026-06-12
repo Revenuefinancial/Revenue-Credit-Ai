@@ -67,7 +67,7 @@ export default async function AdminPage() {
       <main className="mx-auto max-w-6xl px-5 py-8">
         <h1 className="text-2xl font-bold text-ink">Clients</h1>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div data-tour="stats" className="mt-4 grid gap-4 sm:grid-cols-3">
           <Stat label="Clients" value={String(rows.length)} />
           <Stat
             label="Reports uploaded"
@@ -79,7 +79,10 @@ export default async function AdminPage() {
           />
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+        <div
+          data-tour="clients"
+          className="mt-6 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm"
+        >
           <table className="w-full text-left text-sm">
             <thead className="border-b border-line bg-bg/50 text-xs uppercase tracking-wide text-muted">
               <tr>

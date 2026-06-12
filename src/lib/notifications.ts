@@ -86,11 +86,11 @@ function shell(title: string, body: string): string {
         <tr><td style="height:4px;border-radius:14px 14px 0 0;background:#1d4ed8;background-image:linear-gradient(90deg,#1d4ed8 0%,#00bfd8 100%);"></td></tr>
         <tr><td style="background:#ffffff;border:1px solid #e5e9f2;border-top:none;border-radius:0 0 14px 14px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr><td style="padding:28px 40px 8px;"><span style="font-family:${FONT};font-size:19px;font-weight:800;letter-spacing:-.02em;color:#0a1f44;">Score Logic <span style="color:#1d4ed8;">Pro</span></span></td></tr>
+            <tr><td style="padding:28px 40px 8px;"><span style="font-family:${FONT};font-size:19px;font-weight:800;letter-spacing:-.02em;color:#0a1f44;">Revenue Credit <span style="color:#1d4ed8;">AI</span></span></td></tr>
             <tr><td style="padding:6px 40px 0;"><h1 style="margin:0;font-family:${FONT};font-size:23px;line-height:1.25;font-weight:800;color:#0a1f44;">${title}</h1></td></tr>
             <tr><td style="padding:14px 40px 8px;font-family:${FONT};font-size:15px;line-height:1.6;color:#1f2937;">${body}</td></tr>
             <tr><td style="padding:8px 40px 0;"><hr style="border:none;border-top:1px solid #eef1f6;margin:20px 0 0;"></td></tr>
-            <tr><td style="padding:16px 40px 30px;font-family:${FONT};font-size:12px;line-height:1.6;color:#64748b;"><strong style="color:#0a1f44;">Score Logic Pro</strong> · A ${BRAND.parent} company<br><span style="color:#94a3b8;">🔒 Bank-level encryption · Your data is never sold</span></td></tr>
+            <tr><td style="padding:16px 40px 30px;font-family:${FONT};font-size:12px;line-height:1.6;color:#64748b;"><strong style="color:#0a1f44;">Revenue Credit AI</strong> · A ${BRAND.parent} company<br><span style="color:#94a3b8;">🔒 Bank-level encryption · Your data is never sold</span></td></tr>
           </table>
         </td></tr>
       </table>

@@ -38,7 +38,7 @@ if (!apiKey) {
     "\n  RESEND_API_KEY is not set locally.\n" +
       "  Add these two lines to app/.env.local (gitignored, stays on your machine):\n" +
       "    RESEND_API_KEY=your_resend_key\n" +
-      "    RESEND_FROM=Score Logic Pro <noreply@your-verified-domain>\n" +
+      "    RESEND_FROM=Revenue Credit AI <noreply@your-verified-domain>\n" +
       "  then re-run:  node emails/send-test.mjs\n",
   );
   process.exit(1);

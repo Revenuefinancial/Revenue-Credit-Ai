@@ -1,4 +1,4 @@
-// Single source of truth for every Score Logic Pro email.
+// Single source of truth for every Revenue Credit AI email.
 // Pure string templating (no deps) so it can be used by:
 //   - generate.mjs  -> writes paste-ready Supabase templates + standalone previews
 //   - send-test.mjs -> emails every design to a test inbox via Resend
@@ -8,7 +8,7 @@
 // fallbacks, a bulletproof-ish button. Brand tokens mirror app/src/app/globals.css.
 
 export const BRAND = {
-  name: "Score Logic Pro",
+  name: "Revenue Credit AI",
   parent: "Revenue Financial Services",
   // Sending + contact address on the verified domain (revenuecreditai.com).
   supportEmail: "revenue@revenuecreditai.com",
@@ -89,7 +89,7 @@ export function shell({ title, body, preheader = "", eyebrow = "", eyebrowColor 
                 <tr>
                   <td style="padding:28px 40px 8px;">
                     <span style="font-family:${FONT};font-size:19px;font-weight:800;letter-spacing:-.02em;color:${C.ink};">
-                      Score Logic <span style="color:${C.blue};">Pro</span>
+                      Revenue Credit <span style="color:${C.blue};">AI</span>
                     </span>
                   </td>
                 </tr>
@@ -147,11 +147,11 @@ const muted = (s) =>
 export function confirmSignup(link) {
   return shell({
     title: "Confirm your email address",
-    preheader: "One click confirms your Score Logic Pro account.",
+    preheader: "One click confirms your Revenue Credit AI account.",
     eyebrow: "Welcome",
     eyebrowColor: C.green,
     body:
-      p("Thanks for creating your Score Logic Pro account. Confirm your email address to activate it and start repairing your credit.") +
+      p("Thanks for creating your Revenue Credit AI account. Confirm your email address to activate it and start repairing your credit.") +
       button("Confirm my email", link) +
       muted("This link expires in 24 hours. If you didn't create an account, you can safely ignore this email."),
   });
@@ -160,11 +160,11 @@ export function confirmSignup(link) {
 export function resetPassword(link) {
   return shell({
     title: "Reset your password",
-    preheader: "Reset your Score Logic Pro password.",
+    preheader: "Reset your Revenue Credit AI password.",
     eyebrow: "Security",
     eyebrowColor: C.amber,
     body:
-      p("We received a request to reset the password for your Score Logic Pro account. Click below to choose a new one.") +
+      p("We received a request to reset the password for your Revenue Credit AI account. Click below to choose a new one.") +
       button("Reset password", link) +
       muted("This link expires in 1 hour. If you didn't request a reset, ignore this email — your password won't change."),
   });
@@ -173,11 +173,11 @@ export function resetPassword(link) {
 export function magicLink(link) {
   return shell({
     title: "Your sign-in link",
-    preheader: "Sign in to Score Logic Pro.",
+    preheader: "Sign in to Revenue Credit AI.",
     eyebrow: "Security",
     eyebrowColor: C.blue,
     body:
-      p("Click below to sign in to your Score Logic Pro account. No password needed.") +
+      p("Click below to sign in to your Revenue Credit AI account. No password needed.") +
       button("Sign in", link) +
       muted("This link expires in 1 hour and can only be used once. If you didn't request it, ignore this email."),
   });
@@ -190,7 +190,7 @@ export function changeEmail(link) {
     eyebrow: "Security",
     eyebrowColor: C.amber,
     body:
-      p("You requested to change the email address on your Score Logic Pro account. Confirm this new address to finish the change.") +
+      p("You requested to change the email address on your Revenue Credit AI account. Confirm this new address to finish the change.") +
       button("Confirm new email", link) +
       muted("If you didn't request this, contact us immediately at " + BRAND.supportEmail + "."),
   });
@@ -199,7 +199,7 @@ export function changeEmail(link) {
 export function reauthentication(token) {
   return shell({
     title: "Your verification code",
-    preheader: "Your Score Logic Pro verification code.",
+    preheader: "Your Revenue Credit AI verification code.",
     eyebrow: "Security",
     eyebrowColor: C.blue,
     body:
@@ -213,7 +213,7 @@ export function reauthentication(token) {
 
 export function welcome(dashboardUrl) {
   return shell({
-    title: "Welcome to Score Logic Pro",
+    title: "Welcome to Revenue Credit AI",
     preheader: "Your account is ready — here's your first step.",
     eyebrow: "Welcome",
     eyebrowColor: C.green,
@@ -274,7 +274,7 @@ export const EMAILS = [
   { key: "magic-link", subject: "Your sign-in link", supabaseVar: "{{ .ConfirmationURL }}", render: magicLink, kind: "auth" },
   { key: "change-email", subject: "Confirm your new email address", supabaseVar: "{{ .ConfirmationURL }}", render: changeEmail, kind: "auth" },
   { key: "reauthentication", subject: "Your verification code", supabaseVar: "{{ .Token }}", render: reauthentication, kind: "auth" },
-  { key: "welcome", subject: "Welcome to Score Logic Pro", previewLink: D, render: welcome, kind: "transactional" },
+  { key: "welcome", subject: "Welcome to Revenue Credit AI", previewLink: D, render: welcome, kind: "transactional" },
   { key: "report-received", subject: "We received your credit report", previewLink: D, render: reportReceived, kind: "transactional" },
   { key: "payment-confirmed", subject: "Payment confirmed — DIY Credit Repair", previewLink: D, render: (l) => paymentConfirmed("DIY Credit Repair", l), kind: "transactional" },
   { key: "letter-ready", subject: "Your dispute letter is ready", previewLink: D, render: letterReady, kind: "transactional" },

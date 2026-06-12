@@ -76,13 +76,13 @@ export default async function DashboardPage() {
 
         {/* Plan selection (only until a plan is active) */}
         {!activeOrder && (
-          <Section title="Choose your plan">
+          <Section title="Choose your plan" tourId="plan">
             <PlanPicker />
           </Section>
         )}
 
         {/* Step 1: pull report via SmartCredit referral */}
-        <Section title="Step 1 — Pull your credit report">
+        <Section title="Step 1 — Pull your credit report" tourId="step1">
           <p className="mb-4 text-sm text-muted">
             Use our partner link to pull all three bureaus in minutes, then
             upload the report below.
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
         </Section>
 
         {/* Step 2: upload */}
-        <Section title="Step 2 — Upload your credit report">
+        <Section title="Step 2 — Upload your credit report" tourId="step2">
           <UploadForm />
           {reports && reports.length > 0 && (
             <ul className="mt-5 divide-y divide-line border-t border-line">
@@ -121,7 +121,7 @@ export default async function DashboardPage() {
         </Section>
 
         {/* Step 3: dispute letters back from admin */}
-        <Section title="Step 3 — Your dispute letters">
+        <Section title="Step 3 — Your dispute letters" tourId="step3">
           {letters && letters.length > 0 ? (
             <ul className="divide-y divide-line">
               {(letters as DisputeLetter[]).map((l) => (
@@ -159,12 +159,17 @@ export default async function DashboardPage() {
 function Section({
   title,
   children,
+  tourId,
 }: {
   title: string;
   children: React.ReactNode;
+  tourId?: string;
 }) {
   return (
-    <section className="mt-6 rounded-2xl border border-line bg-surface p-6 shadow-sm">
+    <section
+      data-tour={tourId}
+      className="mt-6 rounded-2xl border border-line bg-surface p-6 shadow-sm"
+    >
       <h2 className="mb-4 text-lg font-bold text-ink">{title}</h2>
       {children}
     </section>

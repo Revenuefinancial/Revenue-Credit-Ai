@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════
--- Score Logic Pro / Revenue Credit AI — database schema
+-- Revenue Credit AI — database schema
 -- Run this in the Supabase SQL Editor (idempotent — safe to re-run).
 -- Covers: profiles, orders, credit_reports, dispute_letters,
 -- private storage buckets, and RLS so clients only see their own data.

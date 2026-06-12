@@ -64,8 +64,12 @@ export default function LandingPage() {
           <a href="#how" className="hover:text-ink">How it works</a>
           <a href="#pricing" className="hover:text-ink">Pricing</a>
           <a href="#stories" className="hover:text-ink">Success stories</a>
+          <Link href="/demo" className="hover:text-ink">View demo</Link>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/demo" className="text-sm font-medium text-ink hover:text-brand md:hidden">
+            Demo
+          </Link>
           <Link href="/signin" className="text-sm font-medium text-ink hover:text-brand">
             Sign in
           </Link>
@@ -280,6 +284,8 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-muted md:flex-row">
           <span>© {new Date().getFullYear()} {BRAND.name}. A {BRAND.parent} company.</span>
           <div className="flex gap-5">
+            <Link href="/how-it-works" className="hover:text-ink">How it works</Link>
+            <Link href="/demo" className="hover:text-ink">Demo</Link>
             <Link href="/terms" className="hover:text-ink">Terms</Link>
             <Link href="/privacy" className="hover:text-ink">Privacy</Link>
             <Link href="/disclaimer" className="hover:text-ink">Disclaimer</Link>
