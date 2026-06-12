@@ -68,6 +68,31 @@ export async function uploadReport(
   return { message: "Credit report uploaded. Our team will review it shortly." };
 }
 
+export interface AddressState {
+  error?: string;
+  message?: string;
+}
+
+// Saves the client's mailing address to their profile. This is printed at the
+// top of every generated dispute letter, so the bureaus can respond to them.
+export async function saveMailingAddress(
+  _prev: AddressState,
+  formData: FormData,
+): Promise<AddressState> {
+  const user = await requireUser();
+  const address = (formData.get("mailing_address") as string | null)?.trim() || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ mailing_address: address })
+    .eq("id", user.id);
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  revalidatePath("/dashboard");
+  return { message: "Mailing address saved." };
+}
+
 // Returns a short-lived signed URL for a private file the caller owns.
 // RLS on storage.objects enforces ownership; we also re-check the path prefix.
 export async function getDownloadUrl(

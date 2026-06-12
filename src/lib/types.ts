@@ -9,6 +9,7 @@ export interface Profile {
   email: string | null;
   full_name: string | null;
   phone: string | null;
+  mailing_address: string | null;
   role: Role;
   created_at: string;
 }

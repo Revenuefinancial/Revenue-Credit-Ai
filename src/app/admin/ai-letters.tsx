@@ -7,6 +7,7 @@ import {
   approveDraft,
   rejectDraft,
 } from "./actions";
+import { GeneratingOverlay } from "./generating-overlay";
 import type { CreditReport, LetterDraft } from "@/lib/types";
 
 export function AiLetters({
@@ -19,6 +20,7 @@ export function AiLetters({
   drafts: LetterDraft[];
 }) {
   const [pending, startTransition] = useTransition();
+  const [generating, setGenerating] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(
     null,
   );
@@ -34,11 +36,24 @@ export function AiLetters({
     });
   }
 
+  function handleGenerate() {
+    if (!latestReport) return;
+    setNotice(null);
+    setGenerating(true);
+    startTransition(async () => {
+      const res = await generateDrafts(userId, latestReport.id);
+      setGenerating(false);
+      if (res.error) setNotice({ kind: "err", text: res.error });
+      else if (res.message) setNotice({ kind: "ok", text: res.message });
+    });
+  }
+
   // Group drafts by round, newest first.
   const rounds = [...new Set(drafts.map((d) => d.round))].sort((a, b) => b - a);
 
   return (
     <div>
+      {generating && <GeneratingOverlay />}
       <p className="mb-4 text-sm text-muted">
         Generate dispute letters from the client&apos;s uploaded report with AI,
         then review and approve each one. <strong>Nothing is sent to the client
@@ -49,7 +64,7 @@ export function AiLetters({
         <button
           type="button"
           disabled={pending}
-          onClick={() => run(() => generateDrafts(userId, latestReport.id))}
+          onClick={handleGenerate}
           className="rounded-rc bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-2 disabled:opacity-60"
         >
           {pending ? "Working…" : "✨ Generate AI dispute letters"}

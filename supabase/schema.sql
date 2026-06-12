@@ -18,9 +18,13 @@ create table if not exists public.profiles (
   email       text,
   full_name   text,
   phone       text,
+  mailing_address text,
   role        text not null default 'client' check (role in ('client', 'admin')),
   created_at  timestamptz not null default now()
 );
+-- Backfill for existing installs (no-op if the column already exists).
+alter table public.profiles
+  add column if not exists mailing_address text;
 
 -- orders ─────────────────────────────────────────────────────────────
 create table if not exists public.orders (

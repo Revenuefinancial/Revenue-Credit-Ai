@@ -40,3 +40,87 @@ body {
   font-family: var(--font-inter), "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── Generating-overlay animations (pure CSS, no JS deps) ───────────── */
+@property --rc-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes rc-spin {
+  to {
+    --rc-angle: 360deg;
+  }
+}
+@keyframes rc-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+@keyframes rc-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Beam of light that travels around a card's border */
+.rc-beam-border {
+  position: relative;
+  isolation: isolate;
+}
+.rc-beam-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--rc-angle),
+    transparent 0deg,
+    var(--rc-cyan) 55deg,
+    var(--rc-blue-2) 110deg,
+    transparent 165deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: rc-spin 3s linear infinite;
+  pointer-events: none;
+}
+
+/* Shimmering "active step" text */
+.rc-shimmer {
+  background: linear-gradient(
+    110deg,
+    var(--rc-muted) 35%,
+    var(--rc-ink) 50%,
+    var(--rc-muted) 65%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: rc-shimmer 2.4s linear infinite;
+}
+
+.rc-fade-up {
+  animation: rc-fade-up 0.4s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-beam-border::before,
+  .rc-shimmer {
+    animation: none;
+  }
+}

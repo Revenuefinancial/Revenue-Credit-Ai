@@ -13,6 +13,7 @@ import type {
 import { UploadLetterForm } from "../upload-letter-form";
 import { AdminDownloadButton } from "../admin-download-button";
 import { AiLetters } from "../ai-letters";
+import { ClientAddressForm } from "../client-address-form";
 
 // AI generation can take up to a minute on large reports.
 export const maxDuration = 60;
@@ -146,6 +147,14 @@ export default async function AdminClientPage({
           ) : (
             <p className="text-sm text-muted">No reports uploaded yet.</p>
           )}
+        </Section>
+
+        {/* Client mailing address (printed on generated letters) */}
+        <Section title="Client mailing address">
+          <ClientAddressForm
+            userId={prof.id}
+            current={prof.mailing_address ?? null}
+          />
         </Section>
 
         {/* AI dispute-letter drafting + review */}

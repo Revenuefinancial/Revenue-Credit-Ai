@@ -14,6 +14,7 @@ import type {
 import { UploadForm } from "./upload-form";
 import { PlanPicker } from "./plan-picker";
 import { DownloadButton } from "./download-button";
+import { AddressForm } from "./address-form";
 
 export default async function DashboardPage() {
   const user = await getSessionUser();
@@ -136,6 +137,11 @@ export default async function DashboardPage() {
               ))}
             </ul>
           )}
+        </Section>
+
+        {/* Mailing address — printed on every dispute letter */}
+        <Section title="Your mailing address" tourId="address">
+          <AddressForm current={prof?.mailing_address ?? null} />
         </Section>
 
         {/* Step 3: dispute letters back from admin */}

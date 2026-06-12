@@ -31,15 +31,50 @@ export function isAiConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY);
 }
 
-const SYSTEM_INSTRUCTIONS = `You are a senior credit-repair specialist drafting consumer dispute letters under the Fair Credit Reporting Act (FCRA), Section 611 (15 U.S.C. §1681i).
+// Defensive cleanup: the model is told to emit plain text, but it still
+// occasionally wraps creditor names in markdown bold. These letters are
+// printed and mailed, so any stray markup looks unprofessional. The model is
+// also told to render masked account digits as "x" (never "*"), which makes it
+// safe to strip every remaining asterisk here without corrupting an account
+// number. Hyphen "- " bullets are valid plain text and are left intact.
+function stripMarkdown(s: string): string {
+  return s
+    .replace(/\*\*([^*]+)\*\*/g, "$1") // **bold** → bold
+    .replace(/__([^_]+)__/g, "$1") // __bold__ → bold (underscores in emails kept)
+    .replace(/`+/g, "") // remove code-span backticks
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "") // strip ATX heading markers
+    .replace(/\*/g, "") // any leftover asterisk (masks use "x", so this is safe)
+    .replace(/[ \t]+$/gm, ""); // trim trailing whitespace per line
+}
 
-Rules you MUST follow:
-- Read the attached credit report and identify items the consumer can reasonably dispute: accounts reported as late/derogatory, collections, charge-offs, accounts the consumer may not recognize, inaccurate balances, duplicate entries, outdated items, or hard inquiries.
-- Dispute ONLY items that actually appear in the attached report. Never invent accounts, creditors, balances, or dates. If a detail is not legible in the report, refer to it generally rather than fabricating specifics.
-- Write ONE letter addressed to EACH of the three bureaus (Equifax, Experian, TransUnion). In each letter, dispute the items relevant to that bureau's report. If you cannot tell which bureau an item came from, include it in all three.
-- Each letter must: open as a formal dispute, list the specific disputed item(s) with enough detail to identify them, request a reinvestigation and that unverifiable items be corrected or deleted under FCRA §611, and ask for an updated report when complete.
-- Use professional, firm, non-deceptive language. Do NOT promise outcomes or make legal threats. Do NOT include fabricated personal identifiers — where the consumer's address, account numbers, or SSN would go, leave a clearly marked placeholder like [YOUR ADDRESS] or [ACCOUNT #] for the consumer to fill in.
-- These are DRAFTS for human review. Accuracy and restraint matter more than volume.`;
+const SYSTEM_INSTRUCTIONS = `You are a senior credit-repair specialist drafting consumer dispute letters under the Fair Credit Reporting Act (FCRA). You write letters that are accurate, legally grounded, individualized, and ready to print and mail with no further editing.
+
+LEGAL GROUNDING — cite these correctly and only where they fit:
+- FCRA §611, 15 U.S.C. §1681i — the consumer's right to a reinvestigation. The bureau must investigate disputed items, generally within 30 days, and must delete or correct any item that cannot be verified as accurate and complete.
+- FCRA §611(a)(7) — the consumer may request a description of the method of verification: the procedure used AND the name, address, and telephone number of any furnisher contacted, to be provided within 15 days. Request this explicitly so a bald "verified" response can be challenged.
+- FCRA §623, 15 U.S.C. §1681s-2 — furnishers of information must report accurate, complete data and investigate disputes forwarded by the bureau.
+- FCRA §609, 15 U.S.C. §1681g — the consumer's right to disclosure of file contents. Reference only if relevant.
+
+WHAT TO DISPUTE:
+- Read the attached credit report and identify genuinely disputable items: accounts reported late/derogatory, collections, charge-offs, accounts the consumer may not recognize, inaccurate balances or statuses, duplicate tradelines, items past the reporting window, or unrecognized hard inquiries.
+- Dispute ONLY items that actually appear in the attached report. NEVER invent accounts, creditors, balances, dates, or account numbers. Use the exact creditor names and the partial/last digits of the account numbers as they appear in the report. If a detail is illegible, identify the item by creditor name and account type rather than guessing.
+- Account numbers in the report are masked. When you reference a masked account number, write the hidden digits using lowercase "x" — for example "226071xxxx". NEVER use the asterisk character (*) anywhere in your output for any reason.
+- Write ONE letter to EACH of the three bureaus (Equifax, Experian, TransUnion). Dispute the items relevant to that bureau. If you cannot tell which bureau reported an item, include it in all three.
+
+INDIVIDUALIZATION & FIELD-LEVEL SPECIFICITY (this is what makes a dispute work):
+- Do NOT use identical, generic, template language across items. The CFPB and the bureaus flag mass-produced, identical "credit-repair-mill" letters as frivolous under §611(a)(3), which lets them refuse the investigation. Vary the wording naturally per item.
+- Challenge the SPECIFIC DATA FIELD that is wrong — not the whole account in the abstract. Bureaus run disputes through automated screening (e-OSCAR); naming the exact reporting point is what prevents an automatic "verified" rubber-stamp. For each item state three things plainly: (a) the precise field/fact that is inaccurate (e.g., the payment status, the balance, the date opened, the "not mine" ownership), (b) why it is wrong in one factual sentence, and (c) the EXACT correction requested — either "delete this item" or "update [field] to [correct value]".
+
+LETTER REQUIREMENTS:
+- Each letter must: (1) open as a formal dispute, (2) identify each disputed item with a separate number — creditor name and the masked account number exactly as shown — then state the inaccurate field, the one-sentence reason, and the exact correction requested, (3) demand a reasonable reinvestigation under FCRA §611 and deletion or correction within 30 days of any item that cannot be verified as accurate and complete, (4) explicitly request, under §611(a)(7), the method of verification including the name, address, and phone number of any furnisher contacted, within 15 days, and (5) request an updated, corrected copy of the report when the investigation is complete.
+- Tone: professional, firm, factual. Do NOT promise or predict outcomes, do NOT guarantee deletions or score changes (the Credit Repair Organizations Act prohibits outcome guarantees), and do NOT make legal threats.
+
+OUTPUT FORMAT — read carefully:
+- PLAIN TEXT ONLY. Absolutely NO markdown: no asterisks, no "**", no "#", no backticks, no markdown bullets. If you want a list, use a hanging "- " line or a numbered "1." line in plain text only.
+- ZERO bracketed placeholders. The letter must be fully filled in and mailable as-is. Never output "[", "]", "[YOUR ADDRESS]", "[DATE]", "[ACCOUNT #]", "XXXX", or any fill-in token. Use the consumer details and date provided to you in the user message.
+- If a specific consumer detail (e.g., phone) was NOT provided to you, simply OMIT that line — do not insert a placeholder and do not invent it.
+- Structure each letter as a real business letter: the consumer's name and mailing address block, the date, the bureau's name and official dispute-department mailing address, a "Re:" subject line, the body, and a closing with the consumer's typed name on the signature line.
+- These are DRAFTS for human admin review and approval. Accuracy, restraint, and individualization matter more than volume.`;
 
 const SCHEMA = {
   type: "object",
@@ -78,7 +113,34 @@ interface GenerateArgs {
   fileName: string;
   contentType: string; // e.g. application/pdf, image/png
   clientName?: string | null;
+  clientAddress?: string | null;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
   round?: number;
+}
+
+// Builds the plain-text consumer block the model uses for the letter header.
+// Lines with no value are omitted entirely so the letter never shows a blank
+// or a placeholder. The model is told to OMIT (not bracket) anything missing.
+function consumerDetails({
+  clientName,
+  clientAddress,
+  clientPhone,
+  clientEmail,
+}: Pick<
+  GenerateArgs,
+  "clientName" | "clientAddress" | "clientPhone" | "clientEmail"
+>): string {
+  const lines: string[] = [];
+  if (clientName?.trim()) lines.push(`Full name: ${clientName.trim()}`);
+  if (clientAddress?.trim()) {
+    lines.push(`Mailing address (use exactly as written):\n${clientAddress.trim()}`);
+  }
+  if (clientPhone?.trim()) lines.push(`Phone: ${clientPhone.trim()}`);
+  if (clientEmail?.trim()) lines.push(`Email: ${clientEmail.trim()}`);
+  return lines.length
+    ? lines.join("\n")
+    : "No consumer contact details were provided.";
 }
 
 // Drafts one dispute letter per bureau from the given report file.
@@ -89,6 +151,9 @@ export async function generateLetterDrafts({
   fileName,
   contentType,
   clientName,
+  clientAddress,
+  clientPhone,
+  clientEmail,
   round = 1,
 }: GenerateArgs): Promise<GenerateResult> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -114,10 +179,29 @@ export async function generateLetterDrafts({
         image_url: `data:${contentType || "image/png"};base64,${b64}`,
       };
 
+  const today = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const details = consumerDetails({
+    clientName,
+    clientAddress,
+    clientPhone,
+    clientEmail,
+  });
+
   const instructionText =
-    `This is the credit report for ${clientName?.trim() || "the consumer"}. ` +
-    `Draft round ${round} dispute letters per the rules. ` +
-    `Return all three bureau letters.`;
+    `This is the credit report for ${clientName?.trim() || "the consumer"}.\n\n` +
+    `Today's date is ${today} — use this exact date in every letter.\n\n` +
+    `Consumer details to use in the letter header and signature (use these ` +
+    `verbatim; OMIT any line that is not provided — never leave a placeholder):\n` +
+    `${details}\n\n` +
+    `Draft round ${round} dispute letters per the rules. Every letter must be ` +
+    `fully filled in with the details above and today's date, contain NO ` +
+    `bracketed placeholders, and use PLAIN TEXT with no markdown. Return all ` +
+    `three bureau letters.`;
 
   const response = await client.responses.create({
     model,
@@ -153,9 +237,13 @@ export async function generateLetterDrafts({
     throw new Error("The AI response could not be parsed.");
   }
 
-  const letters = (parsed.letters ?? []).filter(
-    (l) => l && l.bureau && l.body,
-  );
+  const letters = (parsed.letters ?? [])
+    .filter((l) => l && l.bureau && l.body)
+    .map((l) => ({
+      ...l,
+      subject: stripMarkdown(l.subject ?? "").trim(),
+      body: stripMarkdown(l.body).trim(),
+    }));
   if (letters.length === 0) {
     throw new Error("The AI did not produce any letters.");
   }

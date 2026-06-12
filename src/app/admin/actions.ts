@@ -125,12 +125,14 @@ export async function generateDrafts(
   const round =
     ((existing as { round: number }[] | null)?.[0]?.round ?? 0) + 1;
 
+  // select("*") is intentional: it won't error if the mailing_address column
+  // hasn't been migrated yet — it just comes back undefined → blank address.
   const { data: profile } = await db
     .from("profiles")
-    .select("full_name")
+    .select("*")
     .eq("id", userId)
     .single();
-  const clientName = (profile as { full_name: string | null } | null)?.full_name;
+  const prof = profile as Partial<Profile> | null;
 
   let result;
   try {
@@ -138,7 +140,10 @@ export async function generateDrafts(
       reportBytes,
       fileName: rep.file_name,
       contentType,
-      clientName,
+      clientName: prof?.full_name ?? null,
+      clientAddress: prof?.mailing_address ?? null,
+      clientPhone: prof?.phone ?? null,
+      clientEmail: prof?.email ?? null,
       round,
     });
   } catch (err) {
@@ -168,6 +173,24 @@ export async function generateDrafts(
   return {
     message: `Drafted ${rows.length} letter${rows.length === 1 ? "" : "s"} (round ${round}). Review and approve below.`,
   };
+}
+
+// Admin saves/edits a client's mailing address (used on generated letters).
+export async function saveClientAddress(
+  userId: string,
+  address: string,
+): Promise<DraftActionState> {
+  await requireAdmin();
+  const db = createAdminClient();
+
+  const { error } = await db
+    .from("profiles")
+    .update({ mailing_address: address.trim() || null })
+    .eq("id", userId);
+  if (error) return { error: `Could not save address: ${error.message}` };
+
+  revalidatePath(`/admin/${userId}`);
+  return { message: "Mailing address saved." };
 }
 
 // Save admin edits to a draft's body/subject.
