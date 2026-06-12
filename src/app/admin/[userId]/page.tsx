@@ -3,9 +3,19 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PLANS } from "@/lib/config";
-import type { Order, Profile, CreditReport, DisputeLetter } from "@/lib/types";
+import type {
+  Order,
+  Profile,
+  CreditReport,
+  DisputeLetter,
+  LetterDraft,
+} from "@/lib/types";
 import { UploadLetterForm } from "../upload-letter-form";
 import { AdminDownloadButton } from "../admin-download-button";
+import { AiLetters } from "../ai-letters";
+
+// AI generation can take up to a minute on large reports.
+export const maxDuration = 60;
 
 export default async function AdminClientPage({
   params,
@@ -24,7 +34,7 @@ export default async function AdminClientPage({
   if (!profile) notFound();
   const prof = profile as Profile;
 
-  const [{ data: orders }, { data: reports }, { data: letters }] =
+  const [{ data: orders }, { data: reports }, { data: letters }, { data: drafts }] =
     await Promise.all([
       db
         .from("orders")
@@ -41,11 +51,17 @@ export default async function AdminClientPage({
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false }),
+      db
+        .from("letter_drafts")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
     ]);
 
   const allOrders = (orders as Order[] | null) ?? [];
   const allReports = (reports as CreditReport[] | null) ?? [];
   const allLetters = (letters as DisputeLetter[] | null) ?? [];
+  const allDrafts = (drafts as LetterDraft[] | null) ?? [];
 
   return (
     <div className="min-h-screen bg-bg">
@@ -130,6 +146,15 @@ export default async function AdminClientPage({
           ) : (
             <p className="text-sm text-muted">No reports uploaded yet.</p>
           )}
+        </Section>
+
+        {/* AI dispute-letter drafting + review */}
+        <Section title="AI dispute letters">
+          <AiLetters
+            userId={prof.id}
+            reports={allReports}
+            drafts={allDrafts}
+          />
         </Section>
 
         {/* Upload a dispute letter back */}

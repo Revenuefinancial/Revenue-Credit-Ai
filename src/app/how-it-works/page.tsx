@@ -31,8 +31,8 @@ const CLIENT_STEPS = [
   },
   {
     n: 5,
-    h: "Download your dispute letters",
-    p: "When your letters are ready they appear under Step 3. We email and text you the moment a new round is posted.",
+    h: "View and print your dispute letters",
+    p: "When your letters are approved they appear under Step 3. Open any one to read it, then print it or save it as a PDF. We email and text you the moment a new round is posted.",
   },
 ];
 
@@ -44,13 +44,41 @@ const ADMIN_STEPS = [
   },
   {
     n: 2,
-    h: "Open a client",
-    p: "Click 'Manage' to see their payments, download the report they uploaded, and review past letters.",
+    h: "Open a client and read their report",
+    p: "Click 'Manage' to see their payments and download the exact report they uploaded — stored privately, visible only to you and the client.",
   },
   {
     n: 3,
-    h: "Send a finished letter",
-    p: "Upload the completed dispute letter PDF. The client is notified automatically by email and SMS, and it appears in their dashboard instantly.",
+    h: "Let the AI draft the letters",
+    p: "One click reads the report and writes a separate FCRA dispute letter for each bureau, citing the specific accounts it found. They arrive as editable drafts — nothing is sent.",
+  },
+  {
+    n: 4,
+    h: "Review, approve, release",
+    p: "You read each letter, edit anything you like, then click 'Approve & release'. Only then can the client see it — and they're notified automatically by email and SMS.",
+  },
+];
+
+const FAQS = [
+  {
+    q: "Where does my credit report go after I upload it?",
+    a: "Into a private, encrypted storage vault tied to your account. It is never public and never sold. Only you and the Revenue Credit AI team can open it — other clients can't, and search engines can't.",
+  },
+  {
+    q: "How are the dispute letters actually written?",
+    a: "When your team opens your file, they run the AI on your uploaded report. It reads the report, finds the accounts and items worth disputing, and drafts a separate FCRA dispute letter for each bureau — in seconds.",
+  },
+  {
+    q: "Does the AI send anything automatically?",
+    a: "No. Every AI letter starts as a draft that a real person on the team reads, edits, and approves first. Nothing reaches you — or any bureau — until a human has signed off. That review step is intentional, to keep the letters accurate and compliant.",
+  },
+  {
+    q: "What do I do with a letter once it's ready?",
+    a: "Open it from Step 3 on your dashboard. Fill in the few bracketed blanks (your address, account numbers), then print it or save it as a PDF. On DIY you mail it yourself; on Done-For-You the team certified-mails every round for you.",
+  },
+  {
+    q: "Is my information secure?",
+    a: "Yes. Files are stored with bank-level encryption, access is locked to your account, and your data is never sold. Sign-in is required to view anything in your dashboard.",
   },
 ];
 
@@ -199,6 +227,26 @@ export default function HowItWorksPage() {
         <p className="mt-4 text-center text-xs text-muted">
           Pricing shown is provisional pending final confirmation.
         </p>
+      </section>
+
+      {/* FAQ — answers the questions clients ask most */}
+      <section className="bg-surface border-y border-line">
+        <div className="mx-auto max-w-3xl px-6 py-12">
+          <h2 className="mb-6 text-2xl font-bold tracking-tight">
+            Common questions
+          </h2>
+          <div className="space-y-4">
+            {FAQS.map((f) => (
+              <div
+                key={f.q}
+                className="rounded-2xl border border-line bg-bg p-5"
+              >
+                <h3 className="font-semibold text-ink">{f.q}</h3>
+                <p className="mt-1 text-sm text-muted">{f.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Footer */}

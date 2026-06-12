@@ -49,3 +49,21 @@ export interface DisputeLetter {
   created_by: string | null;
   created_at: string;
 }
+
+export type LetterDraftStatus = "draft" | "approved" | "rejected";
+
+export interface LetterDraft {
+  id: string;
+  user_id: string;
+  report_id: string | null;
+  bureau: string;
+  subject: string | null;
+  body: string;
+  round: number;
+  model: string | null;
+  status: LetterDraftStatus;
+  created_by: string | null;
+  approved_by: string | null;
+  created_at: string;
+  approved_at: string | null;
+}

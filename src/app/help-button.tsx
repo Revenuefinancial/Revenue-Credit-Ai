@@ -84,7 +84,7 @@ const TOURS: Record<string, Tour> = {
       {
         sel: '[data-tour="step3"]',
         title: "Step 3 — Dispute letters",
-        body: "When your team finishes a client’s letters, they appear here for the client to download, round by round.",
+        body: "Once the team approves a client’s AI-drafted letters, they appear here to view and print, round by round.",
       },
     ],
   },
@@ -116,7 +116,7 @@ const TOURS: Record<string, Tour> = {
       {
         sel: '[data-tour="hiw-admin"]',
         title: "Your journey",
-        body: "What you do behind the scenes: review uploads, prepare letters, and send them back — clients are notified automatically.",
+        body: "What you do behind the scenes: open a client, let the AI draft their letters, review and approve each one — clients are notified automatically.",
       },
     ],
   },

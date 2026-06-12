@@ -66,6 +66,28 @@ create table if not exists public.dispute_letters (
 );
 create index if not exists dispute_letters_user_id_idx on public.dispute_letters (user_id);
 
+-- letter_drafts (AI-generated dispute-letter text, admin-reviewed) ────
+-- Generated from an uploaded credit report by the AI step, then a human
+-- admin edits/approves before the client can see it. NOTHING is ever
+-- auto-sent — a draft is invisible to the client until status='approved'.
+create table if not exists public.letter_drafts (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles (id) on delete cascade,
+  report_id   uuid references public.credit_reports (id) on delete set null,
+  bureau      text not null,           -- Equifax | Experian | TransUnion
+  subject     text,
+  body        text not null,           -- the letter text itself
+  round       integer not null default 1,
+  model       text,                    -- which AI model produced it
+  status      text not null default 'draft'
+                check (status in ('draft', 'approved', 'rejected')),
+  created_by  uuid references public.profiles (id),
+  approved_by uuid references public.profiles (id),
+  created_at  timestamptz not null default now(),
+  approved_at timestamptz
+);
+create index if not exists letter_drafts_user_id_idx on public.letter_drafts (user_id);
+
 -- ── Auto-create a profile row when a new auth user signs up ─────────
 create or replace function public.handle_new_user()
 returns trigger
@@ -114,6 +136,7 @@ alter table public.profiles        enable row level security;
 alter table public.orders          enable row level security;
 alter table public.credit_reports  enable row level security;
 alter table public.dispute_letters enable row level security;
+alter table public.letter_drafts   enable row level security;
 
 -- profiles ───────────────────────────────────────────────────────────
 drop policy if exists "profiles: read own or admin"  on public.profiles;
@@ -154,6 +177,20 @@ drop policy if exists "dispute_letters: admin write"        on public.dispute_le
 create policy "dispute_letters: read own or admin" on public.dispute_letters
   for select using (user_id = auth.uid() or public.is_admin());
 create policy "dispute_letters: admin write" on public.dispute_letters
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- letter_drafts ──────────────────────────────────────────────────────
+-- Admins create/edit/approve. Clients can ONLY read drafts that have been
+-- approved by a human — a 'draft' or 'rejected' row is invisible to them.
+drop policy if exists "letter_drafts: read own approved or admin" on public.letter_drafts;
+drop policy if exists "letter_drafts: admin write"               on public.letter_drafts;
+
+create policy "letter_drafts: read own approved or admin" on public.letter_drafts
+  for select using (
+    public.is_admin()
+    or (user_id = auth.uid() and status = 'approved')
+  );
+create policy "letter_drafts: admin write" on public.letter_drafts
   for all using (public.is_admin()) with check (public.is_admin());
 
 -- ════════════════════════════════════════════════════════════════════

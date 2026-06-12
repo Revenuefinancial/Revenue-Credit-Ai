@@ -4,7 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth";
 import { signOut } from "@/app/auth/actions";
 import { BRAND, PLANS, SMARTCREDIT_URL } from "@/lib/config";
-import type { Order, Profile, CreditReport, DisputeLetter } from "@/lib/types";
+import type {
+  Order,
+  Profile,
+  CreditReport,
+  DisputeLetter,
+  LetterDraft,
+} from "@/lib/types";
 import { UploadForm } from "./upload-form";
 import { PlanPicker } from "./plan-picker";
 import { DownloadButton } from "./download-button";
@@ -14,25 +20,37 @@ export default async function DashboardPage() {
   if (!user) redirect("/signin?next=/dashboard");
 
   const supabase = await createClient();
-  const [{ data: profile }, { data: orders }, { data: reports }, { data: letters }] =
-    await Promise.all([
-      supabase.from("profiles").select("*").eq("id", user.id).single(),
-      supabase
-        .from("orders")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("credit_reports")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("uploaded_at", { ascending: false }),
-      supabase
-        .from("dispute_letters")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: profile },
+    { data: orders },
+    { data: reports },
+    { data: letters },
+    { data: drafts },
+  ] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase
+      .from("orders")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("credit_reports")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("uploaded_at", { ascending: false }),
+    supabase
+      .from("dispute_letters")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    // RLS only returns 'approved' drafts to the client.
+    supabase
+      .from("letter_drafts")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+  ]);
+  const aiLetters = (drafts as LetterDraft[] | null) ?? [];
 
   const prof = profile as Profile | null;
   const activeOrder = (orders as Order[] | null)?.find(
@@ -122,8 +140,35 @@ export default async function DashboardPage() {
 
         {/* Step 3: dispute letters back from admin */}
         <Section title="Step 3 — Your dispute letters" tourId="step3">
-          {letters && letters.length > 0 ? (
+          {aiLetters.length > 0 && (
             <ul className="divide-y divide-line">
+              {aiLetters.map((l) => (
+                <li
+                  key={l.id}
+                  className="flex items-center justify-between gap-3 py-3 text-sm"
+                >
+                  <span className="min-w-0 text-ink-2">
+                    <span className="font-semibold">Round {l.round}</span> ·{" "}
+                    {l.bureau} dispute letter
+                    {l.subject && (
+                      <span className="block truncate text-xs text-muted">
+                        {l.subject}
+                      </span>
+                    )}
+                  </span>
+                  <Link
+                    href={`/dashboard/letters/${l.id}`}
+                    className="flex-none rounded-rc border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-brand transition hover:bg-line-soft"
+                  >
+                    View &amp; print
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {letters && letters.length > 0 && (
+            <ul className="divide-y divide-line border-t border-line">
               {(letters as DisputeLetter[]).map((l) => (
                 <li
                   key={l.id}
@@ -144,10 +189,12 @@ export default async function DashboardPage() {
                 </li>
               ))}
             </ul>
-          ) : (
+          )}
+
+          {aiLetters.length === 0 && (!letters || letters.length === 0) && (
             <p className="text-sm text-muted">
-              No letters yet. Once our team prepares your dispute letters,
-              they&apos;ll appear here for download.
+              No letters yet. Once your report is reviewed and your dispute
+              letters are ready, they&apos;ll appear here to view and print.
             </p>
           )}
         </Section>

@@ -21,21 +21,45 @@ const CLIENT = {
   joined: "Jun 3, 2026",
 };
 const REPORT = { file: "Marcus-Johnson-3Bureau-Report.pdf", date: "Jun 8, 2026" };
-const LETTER = {
-  round: 1,
-  file: "Round-1-Dispute-Equifax.pdf",
-  notes: "Disputing 4 items — 2 collections, 1 late payment, 1 hard inquiry.",
-  date: "Jun 10, 2026",
-};
 
-type Screen = "landing" | "dashboard" | "admin" | "adminDetail";
+// Sample AI-drafted letters (one per bureau). Realistic FCRA dispute text —
+// this is exactly the kind of output the live AI produces from a real report.
+const SAMPLE_LETTER_BODY = `To Whom It May Concern:
+
+I am writing to formally dispute the following items on my credit report, which I believe to be inaccurate or unverifiable. Under Section 611 of the Fair Credit Reporting Act (15 U.S.C. §1681i), I request that you conduct a reasonable reinvestigation of each item below.
+
+1. Collection account — "Midland Funding LLC" (Account #[ACCOUNT #])
+   I have no record of this debt and dispute its accuracy. Please verify the original creditor, amount, and date.
+
+2. Late payment — "Capital One" reported 30 days late, March 2024
+   This payment was made on time. Please reinvestigate and correct the payment history.
+
+3. Hard inquiry — dated Feb 2024
+   I did not authorize this inquiry. Please remove it if it cannot be verified.
+
+If any item cannot be fully verified, I request that it be corrected or deleted from my file. Please send me an updated copy of my credit report once the reinvestigation is complete.
+
+Sincerely,
+[YOUR NAME]
+[YOUR ADDRESS]
+[CITY, STATE ZIP]`;
+
+const SAMPLE_LETTERS = [
+  { bureau: "Equifax", subject: "Formal dispute — 3 items", body: SAMPLE_LETTER_BODY },
+  { bureau: "Experian", subject: "Formal dispute — 3 items", body: SAMPLE_LETTER_BODY },
+  { bureau: "TransUnion", subject: "Formal dispute — 2 items", body: SAMPLE_LETTER_BODY },
+];
+
+type Screen = "landing" | "dashboard" | "admin" | "adminDetail" | "letterPrint";
 type DashState = "empty" | "report" | "letter";
+type AdminStage = "ready" | "drafts" | "approved";
 
 type Chapter = {
   title: string;
   caption: string;
   screen: Screen;
   dash?: DashState;
+  stage?: AdminStage;
 };
 
 const CHAPTERS: Chapter[] = [
@@ -55,7 +79,7 @@ const CHAPTERS: Chapter[] = [
   {
     title: "Report uploaded",
     caption:
-      "The client pulled their report and uploaded the PDF. It now shows under Step 2. Step 3 stays empty until your team sends letters back.",
+      "The client pulled their report and uploaded the PDF. It's stored securely in your private vault — only the client and your team can ever open it. It now shows under Step 2.",
     screen: "dashboard",
     dash: "report",
   },
@@ -66,17 +90,38 @@ const CHAPTERS: Chapter[] = [
     screen: "admin",
   },
   {
-    title: "Opening a client",
+    title: "Open a client — ready to draft",
     caption:
-      "Click 'Manage' on any client to see their payments, download the report they uploaded, and send a finished dispute letter back.",
+      "Click 'Manage' to open a client. You can download the exact report they uploaded, and right here is the AI button: one click drafts a dispute letter for each bureau from their report.",
     screen: "adminDetail",
+    stage: "ready",
   },
   {
-    title: "Letters delivered",
+    title: "The AI drafts the letters",
     caption:
-      "The moment you upload a letter, the client is emailed and texted automatically — and it appears under Step 3 for them to download. The loop is closed.",
+      "In a few seconds the AI reads the report and writes a separate FCRA dispute letter for Equifax, Experian and TransUnion — citing the specific accounts it found. They land as DRAFTS. Nothing is sent yet. You can open, edit, and reword every line.",
+    screen: "adminDetail",
+    stage: "drafts",
+  },
+  {
+    title: "You review and approve",
+    caption:
+      "You — a human — read each letter and click 'Approve & release'. ONLY then does it become visible to the client. This review gate is deliberate: it keeps you in control and keeps the letters accurate and compliant. The AI never sends anything on its own.",
+    screen: "adminDetail",
+    stage: "approved",
+  },
+  {
+    title: "The client gets their letters",
+    caption:
+      "The instant you approve, the client is emailed and texted automatically, and the letters appear under Step 3 — ready to view and print. The loop is closed.",
     screen: "dashboard",
     dash: "letter",
+  },
+  {
+    title: "The finished letter",
+    caption:
+      "This is what the client opens and prints. Clean, on-letterhead, with bracketed blanks for their address and account numbers. DIY clients mail it themselves; Done-For-You clients have your team certified-mail it.",
+    screen: "letterPrint",
   },
 ];
 
@@ -118,7 +163,9 @@ export default function DemoPage() {
                 ? "/dashboard"
                 : ch.screen.startsWith("admin")
                   ? "/admin"
-                  : ""}
+                  : ch.screen === "letterPrint"
+                    ? "/dashboard/letters"
+                    : ""}
             </span>
           </div>
 
@@ -129,8 +176,9 @@ export default function DemoPage() {
             )}
             {ch.screen === "admin" && <DemoAdmin />}
             {ch.screen === "adminDetail" && (
-              <DemoAdminDetail withLetter={false} />
+              <DemoAdminDetail stage={ch.stage ?? "ready"} />
             )}
+            {ch.screen === "letterPrint" && <DemoLetterPrint />}
           </div>
         </div>
       </div>
@@ -406,23 +454,28 @@ function DemoDashboard({ state }: { state: DashState }) {
         <DemoSection title="Step 3 — Your dispute letters">
           {hasLetter ? (
             <ul className="divide-y divide-line">
-              <li className="flex items-center justify-between py-3 text-sm">
-                <span className="text-ink-2">
-                  <span className="font-semibold">Round {LETTER.round}</span> ·{" "}
-                  {LETTER.file}
-                  <span className="block text-xs text-muted">
-                    {LETTER.notes}
+              {SAMPLE_LETTERS.map((l) => (
+                <li
+                  key={l.bureau}
+                  className="flex items-center justify-between gap-3 py-3 text-sm"
+                >
+                  <span className="min-w-0 text-ink-2">
+                    <span className="font-semibold">Round 1</span> · {l.bureau}{" "}
+                    dispute letter
+                    <span className="block truncate text-xs text-muted">
+                      {l.subject}
+                    </span>
                   </span>
-                </span>
-                <span className="text-sm font-semibold text-brand">
-                  Download letter
-                </span>
-              </li>
+                  <span className="flex-none rounded-rc border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-brand">
+                    View &amp; print
+                  </span>
+                </li>
+              ))}
             </ul>
           ) : (
             <p className="text-sm text-muted">
-              No letters yet. Once our team prepares your dispute letters,
-              they&apos;ll appear here for download.
+              No letters yet. Once your report is reviewed and your dispute
+              letters are ready, they&apos;ll appear here to view and print.
             </p>
           )}
         </DemoSection>
@@ -532,7 +585,7 @@ function DemoAdmin() {
 }
 
 // ── Screen: Admin client detail (faithful replica) ───────────────────
-function DemoAdminDetail({ withLetter }: { withLetter: boolean }) {
+function DemoAdminDetail({ stage }: { stage: AdminStage }) {
   return (
     <div className="bg-bg">
       <header className="border-b border-line bg-surface">
@@ -549,23 +602,6 @@ function DemoAdminDetail({ withLetter }: { withLetter: boolean }) {
           {CLIENT.email} · {CLIENT.phone} · joined {CLIENT.joined}
         </p>
 
-        <DemoSection title="Payments & service selection">
-          <ul className="divide-y divide-line">
-            <li className="flex items-center justify-between py-3 text-sm">
-              <span className="text-ink-2">
-                <span className="font-semibold">Done-For-You</span> · per round ·{" "}
-                {CLIENT.joined}
-              </span>
-              <span className="flex items-center gap-3">
-                <span className="text-ink-2">$149</span>
-                <span className="rounded-full bg-[var(--rc-green)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--rc-green)]">
-                  active
-                </span>
-              </span>
-            </li>
-          </ul>
-        </DemoSection>
-
         <DemoSection title="Uploaded credit reports">
           <ul className="divide-y divide-line">
             <li className="flex items-center justify-between py-3 text-sm">
@@ -578,34 +614,135 @@ function DemoAdminDetail({ withLetter }: { withLetter: boolean }) {
           </ul>
         </DemoSection>
 
-        <DemoSection title="Upload completed dispute letter">
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div className="rounded-rc border-2 border-dashed border-line bg-bg px-5 py-6 text-center text-sm text-muted">
-              Choose the finished letter PDF to send back to the client.
-            </div>
-            <span className="rounded-rc bg-brand px-5 py-3 text-center font-semibold text-white">
-              Send letter
-            </span>
-          </div>
+        <DemoSection title="AI dispute letters">
+          <DemoAiPanel stage={stage} />
         </DemoSection>
+      </main>
+    </div>
+  );
+}
 
-        <DemoSection title="Dispute letters sent">
-          {withLetter ? (
-            <ul className="divide-y divide-line">
-              <li className="flex items-center justify-between py-3 text-sm">
-                <span className="text-ink-2">
-                  <span className="font-semibold">Round {LETTER.round}</span> ·{" "}
-                  {LETTER.file}
-                </span>
-                <span className="text-sm font-semibold text-brand">
-                  Download
-                </span>
-              </li>
-            </ul>
-          ) : (
-            <p className="text-sm text-muted">No letters sent yet.</p>
-          )}
-        </DemoSection>
+// ── The AI review panel (mirrors the real ai-letters.tsx) ────────────
+function DemoAiPanel({ stage }: { stage: AdminStage }) {
+  return (
+    <div>
+      <p className="mb-4 text-sm text-muted">
+        Generate dispute letters from the client&apos;s uploaded report with AI,
+        then review and approve each one.{" "}
+        <strong>
+          Nothing is sent to the client until you approve it.
+        </strong>
+      </p>
+
+      <span className="inline-block rounded-rc bg-brand px-4 py-2.5 text-sm font-semibold text-white">
+        ✨ Generate AI dispute letters
+      </span>
+      <p className="mt-2 text-xs text-muted">Drafts from: {REPORT.file}</p>
+
+      {stage !== "ready" && (
+        <div className="mt-6">
+          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
+            Round 1
+          </h3>
+          <div className="space-y-3">
+            {SAMPLE_LETTERS.map((l, idx) => {
+              const approved = stage === "approved";
+              return (
+                <div
+                  key={l.bureau}
+                  className="rounded-xl border border-line bg-bg p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-semibold text-ink">
+                        {l.bureau}
+                      </span>
+                      <span className="ml-2 truncate text-sm text-muted">
+                        {l.subject}
+                      </span>
+                    </div>
+                    <span
+                      className={`flex-none rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        approved
+                          ? "bg-[var(--rc-green)]/10 text-[var(--rc-green)]"
+                          : "bg-[var(--rc-amber)]/10 text-[var(--rc-amber)]"
+                      }`}
+                    >
+                      {approved ? "approved" : "draft"}
+                    </span>
+                  </div>
+
+                  {/* First card opened to show the real letter text */}
+                  {idx === 0 && (
+                    <div className="mt-3 space-y-3">
+                      <div className="w-full rounded-lg border border-line bg-surface px-3 py-2 font-mono text-[11px] leading-relaxed text-ink-2">
+                        <pre className="max-h-40 overflow-hidden whitespace-pre-wrap font-mono">
+                          {l.body}
+                        </pre>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-semibold text-ink">
+                          Save edits
+                        </span>
+                        {!approved && (
+                          <span className="rounded-lg bg-[var(--rc-green)] px-3 py-1.5 text-sm font-semibold text-white">
+                            Approve &amp; release
+                          </span>
+                        )}
+                        {!approved && (
+                          <span className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-semibold text-muted">
+                            Reject
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {idx !== 0 && (
+                    <span className="mt-2 inline-block text-sm font-semibold text-brand">
+                      {approved ? "View letter" : "Review & edit letter"}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Screen: the printable letter the client opens (faithful replica) ──
+function DemoLetterPrint() {
+  const l = SAMPLE_LETTERS[0];
+  return (
+    <div className="bg-bg">
+      <header className="border-b border-line bg-surface">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
+          <span className="text-sm font-semibold text-brand">
+            ← Back to dashboard
+          </span>
+          <span className="rounded-rc bg-brand px-5 py-2.5 text-sm font-semibold text-white">
+            🖨 Print / Save as PDF
+          </span>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-3xl px-5 py-8">
+        <div className="mb-4 rounded-lg bg-[var(--rc-amber)]/10 px-4 py-3 text-xs text-ink-2">
+          Before mailing: fill in any bracketed placeholders (your address,
+          account numbers) and sign at the bottom. Send to the bureau by
+          certified mail and keep a copy.
+        </div>
+        <article className="rounded-2xl border border-line bg-white p-8 shadow-sm">
+          <div className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted">
+            Round 1 · {l.bureau}
+          </div>
+          <h1 className="mb-4 text-lg font-bold text-ink">{l.subject}</h1>
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink-2">
+            {l.body}
+          </pre>
+        </article>
       </main>
     </div>
   );
