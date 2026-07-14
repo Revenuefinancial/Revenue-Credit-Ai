@@ -17,10 +17,14 @@ export function PlanPicker() {
         body: JSON.stringify({ planId }),
       });
       const data = await res.json();
+      if (data.needsAgreement) {
+        window.location.assign("/agreement");
+        return;
+      }
       if (!res.ok || !data.url) {
         throw new Error(data.error ?? "Could not start checkout.");
       }
-      window.location.href = data.url;
+      window.location.assign(data.url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setLoading(null);

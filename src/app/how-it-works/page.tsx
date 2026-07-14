@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { BRAND, PLANS, formatPrice } from "@/lib/config";
+import { ViewTutorialButton } from "@/app/view-tutorial-button";
 
 export const metadata: Metadata = {
   title: `How it works — ${BRAND.name}`,
@@ -31,6 +32,11 @@ const CLIENT_STEPS = [
   },
   {
     n: 5,
+    h: "Verify your identity",
+    p: "Upload three documents — a photo ID (front only), a proof of address, and a proof of your Social Security number. This protects your account and helps us get better results. Our team reviews each one and lets you know if anything needs a clearer copy.",
+  },
+  {
+    n: 6,
     h: "View and print your dispute letters",
     p: "When your letters are approved they appear under Step 3. Open any one to read it, then print it or save it as a PDF. We email and text you the moment a new round is posted.",
   },
@@ -39,8 +45,8 @@ const CLIENT_STEPS = [
 const ADMIN_STEPS = [
   {
     n: 1,
-    h: "See every client",
-    p: "The admin panel lists all clients with their plan, status, files, and what they've paid — plus total revenue at a glance.",
+    h: "See every client at a glance",
+    p: "The admin panel lists all clients with their plan, order status, files, and what they've paid — plus, for each one, whether they've signed the agreement and how many items you've removed so far. Total revenue shows at the top.",
   },
   {
     n: 2,
@@ -49,13 +55,28 @@ const ADMIN_STEPS = [
   },
   {
     n: 3,
+    h: "Verify their identity documents",
+    p: "Each client uploads a photo ID, proof of address, and proof of SSN. You review each one and click Approve, or Reject with a quick reason — which emails the client to send a clearer copy. The 'Docs to review' card on your worklist shows who's waiting.",
+  },
+  {
+    n: 4,
     h: "Let the AI draft the letters",
     p: "One click reads the report and writes a separate FCRA dispute letter for each bureau, citing the specific accounts it found. They arrive as editable drafts — nothing is sent.",
   },
   {
-    n: 4,
+    n: 5,
     h: "Review, approve, release",
     p: "You read each letter, edit anything you like, then click 'Approve & release'. Only then can the client see it — and they're notified automatically by email and SMS.",
+  },
+  {
+    n: 6,
+    h: "Track every outcome",
+    p: "Log each disputed item — whether the AI drafted it or you add it by hand — and mark it Sent, Deleted, Corrected, or Verified. Each sent item starts a 35-day bureau clock the client watches on their own dashboard.",
+  },
+  {
+    n: 7,
+    h: "Stay compliant and on top of refunds",
+    p: "Every client shows their signed-agreement status and 3-business-day cancel window, plus a 180-day service clock and how many items you've removed against the refund-policy floor — so you always know who's safe to bill and who's at refund risk.",
   },
 ];
 
@@ -75,6 +96,10 @@ const FAQS = [
   {
     q: "What do I do with a letter once it's ready?",
     a: "Open it from Step 3 on your dashboard. Fill in the few bracketed blanks (your address, account numbers), then print it or save it as a PDF. On DIY you mail it yourself; on Done-For-You the team certified-mails every round for you.",
+  },
+  {
+    q: "Why do I have to upload my ID and other documents?",
+    a: "The bureaus and your team need to confirm you are who you say you are before disputing anything in your name — it protects your account and gets better results. You upload three things: a photo ID, a proof of address, and a proof of your Social Security number. A real person reviews each one and lets you know if a clearer copy is needed.",
   },
   {
     q: "Is my information secure?",
@@ -120,6 +145,7 @@ export default function HowItWorksPage() {
           both, start to finish.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <ViewTutorialButton />
           <Link
             href="/demo"
             className="rounded-[12px] bg-brand px-6 py-3 font-semibold text-white transition hover:bg-brand-2"

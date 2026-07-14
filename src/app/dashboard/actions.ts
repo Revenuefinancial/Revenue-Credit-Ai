@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, getProfile } from "@/lib/auth";
-import { notifyReportReceived } from "@/lib/notifications";
+import {
+  notifyReportReceived,
+  notifyAdminReportUploaded,
+  notifyAdminVerificationUploaded,
+} from "@/lib/notifications";
+import { categoryTitle } from "@/lib/verification";
+import type { VerificationCategory } from "@/lib/types";
 
 export interface UploadState {
   error?: string;
@@ -63,9 +69,80 @@ export async function uploadReport(
 
   const profile = await getProfile();
   await notifyReportReceived(profile?.email ?? user.email ?? null);
+  await notifyAdminReportUploaded(profile?.email ?? user.email ?? null);
 
   revalidatePath("/dashboard");
   return { message: "Credit report uploaded. Our team will review it shortly." };
+}
+
+const VERIFICATION_BUCKET = "verification-documents";
+const VERIFICATION_CATEGORIES = new Set<VerificationCategory>([
+  "photo_id",
+  "proof_of_address",
+  "proof_of_ssn",
+]);
+
+// Client uploads one identity-verification document (photo ID, proof of
+// address, or proof of SSN). Stored privately under their own uid folder,
+// then a human admin reviews it. Each upload starts as 'pending'.
+export async function uploadVerificationDocument(
+  _prev: UploadState,
+  formData: FormData,
+): Promise<UploadState> {
+  const user = await requireUser();
+  const categoryRaw = (formData.get("category") as string | null) ?? "";
+  const docType = (formData.get("doc_type") as string | null)?.trim() || null;
+  const file = formData.get("file");
+
+  if (!VERIFICATION_CATEGORIES.has(categoryRaw as VerificationCategory)) {
+    return { error: "Please choose which document you're uploading." };
+  }
+  const category = categoryRaw as VerificationCategory;
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Please choose a file to upload." };
+  }
+  if (file.size > MAX_BYTES) {
+    return { error: "File is too large (max 10 MB)." };
+  }
+  if (!ALLOWED.has(file.type)) {
+    return { error: "Only PDF, PNG, or JPG files are accepted." };
+  }
+
+  const supabase = await createClient();
+  const path = `${user.id}/${category}/${Date.now()}-${sanitize(file.name)}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(VERIFICATION_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (uploadError) {
+    return { error: `Upload failed: ${uploadError.message}` };
+  }
+
+  const { error: insertError } = await supabase
+    .from("verification_documents")
+    .insert({
+      user_id: user.id,
+      category,
+      doc_type: docType,
+      file_path: path,
+      file_name: file.name,
+      file_size: file.size,
+    });
+  if (insertError) {
+    return { error: `Could not save record: ${insertError.message}` };
+  }
+
+  const profile = await getProfile();
+  await notifyAdminVerificationUploaded(
+    profile?.email ?? user.email ?? null,
+    categoryTitle(category),
+  );
+
+  revalidatePath("/dashboard");
+  return {
+    message: `${categoryTitle(category)} uploaded. We'll review it shortly.`,
+  };
 }
 
 export interface AddressState {
@@ -93,10 +170,45 @@ export async function saveMailingAddress(
   return { message: "Mailing address saved." };
 }
 
+export interface ScoreState {
+  error?: string;
+  message?: string;
+}
+
+const SCORE_BUREAUS = new Set(["Merged", "Equifax", "Experian", "TransUnion"]);
+
+// Client self-reports a credit score from their latest report pull. Stored in
+// score_history so the dashboard can chart progress over time.
+export async function logScore(
+  _prev: ScoreState,
+  formData: FormData,
+): Promise<ScoreState> {
+  const user = await requireUser();
+  const score = Number(formData.get("score"));
+  const bureauRaw = (formData.get("bureau") as string | null)?.trim() || "Merged";
+  const bureau = SCORE_BUREAUS.has(bureauRaw) ? bureauRaw : "Merged";
+
+  if (!Number.isInteger(score) || score < 300 || score > 850) {
+    return { error: "Enter a score between 300 and 850." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("score_history").insert({
+    user_id: user.id,
+    bureau,
+    score,
+    source: "smartcredit",
+  });
+  if (error) return { error: `Could not save: ${error.message}` };
+
+  revalidatePath("/dashboard");
+  return { message: "Score logged." };
+}
+
 // Returns a short-lived signed URL for a private file the caller owns.
 // RLS on storage.objects enforces ownership; we also re-check the path prefix.
 export async function getDownloadUrl(
-  bucket: "credit-reports" | "dispute-letters",
+  bucket: "credit-reports" | "dispute-letters" | "verification-documents",
   path: string,
 ): Promise<{ url?: string; error?: string }> {
   const user = await requireUser();

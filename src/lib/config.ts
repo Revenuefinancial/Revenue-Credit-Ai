@@ -1,12 +1,10 @@
-// Central config. Pricing lives here (NOT hardcoded in components) because
-// the final numbers are unconfirmed with the client. Joseph's mockup showed
-// DIY $49 one-time / Done-For-You $149 per round, but he later asked about
-// "$99 or $129 per round" — so treat these as placeholders until confirmed.
-// Update `amountCents` + `interval` in one place when the real prices land.
+// Central config. Pricing lives here (NOT hardcoded in components) so the
+// numbers are a one-line change. Set 2026-06-12 to Joseph's requested drop:
+// DIY $39 one-time / Done-For-You $99 per round (he floated "$99 or $129 per
+// round" for DFY; took the lower). Update `amountCents` + `interval` here.
 
 export const BRAND = {
-  // Brand consolidated to "Revenue Credit AI" (contract title was "Score Logic Pro").
-  // Kept in one place so the name stays a one-line change.
+  // Brand is "Revenue Credit AI". Kept in one place so the name stays a one-line change.
   name: "Revenue Credit AI",
   parent: "Revenue Financial Services",
   supportEmail: "support@revenuecreditai.com",
@@ -29,7 +27,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "diy",
     name: "DIY Credit Repair",
     tagline: "Generate. Print. Mail yourself.",
-    amountCents: 4900, // $49 placeholder
+    amountCents: 3900, // $39
     interval: "one_time",
     features: [
       "AI-drafted dispute letters · all 3 bureaus",
@@ -43,7 +41,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "dfy",
     name: "Done-For-You",
     tagline: "We mail certified. You watch the score climb.",
-    amountCents: 14900, // $149 placeholder
+    amountCents: 9900, // $99 per round
     interval: "per_round",
     featured: true,
     features: [
@@ -67,3 +65,8 @@ export function formatPrice(plan: Plan): { amount: string; unit: string } {
 export const SMARTCREDIT_URL =
   process.env.NEXT_PUBLIC_SMARTCREDIT_URL ??
   "https://www.smartcredit.com/?PID=98507";
+
+// Onboarding-call booking link (Calendly / GoHighLevel / etc). Set this to the
+// client's existing calendar URL and a "Book your onboarding call" card appears
+// on the client dashboard. Leave empty to hide the card entirely.
+export const BOOKING_URL = process.env.NEXT_PUBLIC_BOOKING_URL ?? "";

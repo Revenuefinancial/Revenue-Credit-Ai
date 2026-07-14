@@ -8,7 +8,7 @@ export function DownloadButton({
   path,
   label = "Download",
 }: {
-  bucket: "credit-reports" | "dispute-letters";
+  bucket: "credit-reports" | "dispute-letters" | "verification-documents";
   path: string;
   label?: string;
 }) {

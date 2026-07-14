@@ -14,119 +14,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-type Step = {
-  // CSS selector for the element to spotlight. Optional — when missing or
-  // not found, the step renders as a centered card.
-  sel?: string;
-  title: string;
-  body: string;
-};
-
-type Tour = {
-  label: string; // shown on the "Take a tour" button + panel heading
-  blurb: string; // one-line description of the page
-  steps: Step[];
-};
-
-// Per-page tours. Keyed by pathname; `/admin/...` falls back to `/admin`.
-const TOURS: Record<string, Tour> = {
-  "/": {
-    label: "Tour the homepage",
-    blurb: "The public landing page new clients see first.",
-    steps: [
-      {
-        sel: "nav",
-        title: "Top navigation",
-        body: "Jump to How it works, Pricing, or Success stories. ‘Sign in’ is for returning clients; ‘Free score check’ starts a new account.",
-      },
-      {
-        sel: "header h1",
-        title: "The promise",
-        body: "The headline sets the expectation: upload a report, get AI-drafted dispute letters, choose DIY or Done-For-You.",
-      },
-      {
-        sel: "header aside",
-        title: "Projected-score preview",
-        body: "An illustrative score projection. It is a marketing preview — real projections appear inside a client’s dashboard after they upload.",
-      },
-      {
-        sel: "#how",
-        title: "How it works",
-        body: "The three-step explainer: pull your report, AI drafts disputes, mail it your way.",
-      },
-      {
-        sel: "#pricing",
-        title: "Pricing",
-        body: "Two plans — DIY (one-time) and Done-For-You (per round). Clicking a plan sends them into signup with that plan pre-selected.",
-      },
-    ],
-  },
-  "/dashboard": {
-    label: "Tour the dashboard",
-    blurb: "Where a logged-in client manages their credit repair.",
-    steps: [
-      {
-        sel: '[data-tour="plan"]',
-        title: "Choose a plan",
-        body: "Until a plan is active, the client picks DIY or Done-For-You here. Once paid, this section disappears.",
-      },
-      {
-        sel: '[data-tour="step1"]',
-        title: "Step 1 — Pull the report",
-        body: "‘Pull my report’ opens our SmartCredit partner link in a new tab so the client can pull all three bureaus.",
-      },
-      {
-        sel: '[data-tour="step2"]',
-        title: "Step 2 — Upload the report",
-        body: "The client uploads the PDF they just pulled. Uploaded reports list here with a download link.",
-      },
-      {
-        sel: '[data-tour="step3"]',
-        title: "Step 3 — Dispute letters",
-        body: "Once the team approves a client’s AI-drafted letters, they appear here to view and print, round by round.",
-      },
-    ],
-  },
-  "/admin": {
-    label: "Tour the admin panel",
-    blurb: "Your team’s view of every client and their files.",
-    steps: [
-      {
-        sel: '[data-tour="stats"]',
-        title: "At-a-glance stats",
-        body: "Total clients, reports uploaded, and paid revenue across the whole platform.",
-      },
-      {
-        sel: '[data-tour="clients"]',
-        title: "Client table",
-        body: "Every client with their plan, status, report/letter counts, and what they’ve paid. Click ‘Manage →’ to open one client.",
-      },
-    ],
-  },
-  "/how-it-works": {
-    label: "Tour this guide",
-    blurb: "A plain-English walkthrough of the whole platform.",
-    steps: [
-      {
-        sel: '[data-tour="hiw-client"]',
-        title: "The client journey",
-        body: "Everything a client does, in order: sign up, pick a plan, pull and upload their report, then download finished letters.",
-      },
-      {
-        sel: '[data-tour="hiw-admin"]',
-        title: "Your journey",
-        body: "What you do behind the scenes: open a client, let the AI draft their letters, review and approve each one — clients are notified automatically.",
-      },
-    ],
-  },
-};
-
-function tourFor(pathname: string): Tour | null {
-  if (TOURS[pathname]) return TOURS[pathname];
-  if (pathname.startsWith("/admin")) return TOURS["/admin"];
-  return null;
-}
+import { type Step, tourFor } from "@/lib/tours";
 
 export function HelpButton() {
   const pathname = usePathname();
@@ -137,11 +25,34 @@ export function HelpButton() {
   const tour = tourFor(pathname);
   const onDemo = pathname.startsWith("/demo");
 
-  // Close everything when the route changes.
+  // Reset on navigation, OR auto-launch the tour when the admin Tutorials hub
+  // sends us here with `?tour=start`. We read the query off window rather than
+  // useSearchParams to avoid the Suspense requirement that hook carries here.
+  // Intentional reset-on-navigation: we sync UI state to an external event
+  // (the route), so the setState here is deliberate, not a derived-state smell.
   useEffect(() => {
+    const wantsTour =
+      new URLSearchParams(window.location.search).get("tour") === "start";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync tour state to the route / ?tour=start
     setOpen(false);
-    setStep(null);
+    setStep(wantsTour && tourFor(window.location.pathname) ? 0 : null);
   }, [pathname]);
+
+  // Let any "View tutorial" button on the page launch the tour. If the current
+  // page has a tour, start it; otherwise open the help panel so the user still
+  // gets the guides.
+  useEffect(() => {
+    const handler = () => {
+      if (tourFor(window.location.pathname)) {
+        setOpen(false);
+        setStep(0);
+      } else {
+        setOpen(true);
+      }
+    };
+    window.addEventListener("rc:start-tour", handler);
+    return () => window.removeEventListener("rc:start-tour", handler);
+  }, []);
 
   // Lock body scroll while a tour overlay is up.
   useEffect(() => {
@@ -156,6 +67,7 @@ export function HelpButton() {
   // Measure the current step's target element.
   useLayoutEffect(() => {
     if (step === null || !tour) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears measurement when no step is active
       setRect(null);
       return;
     }
@@ -251,6 +163,20 @@ export function HelpButton() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-5">
+              {/* Narrated walkthrough video */}
+              <div className="mb-6">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                  Watch the walkthrough
+                </p>
+                <video
+                  src="/tutorial.mp4"
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="w-full rounded-2xl border border-line shadow-sm"
+                />
+              </div>
+
               {tour ? (
                 <>
                   <h3 className="text-base font-bold text-ink">{tour.label}</h3>
@@ -259,7 +185,7 @@ export function HelpButton() {
                     onClick={startTour}
                     className="mt-4 w-full rounded-rc bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-2"
                   >
-                    ▶ Start the tour
+                    ▶ View tutorial
                   </button>
                   <ol className="mt-5 space-y-2">
                     {tour.steps.map((s, i) => (

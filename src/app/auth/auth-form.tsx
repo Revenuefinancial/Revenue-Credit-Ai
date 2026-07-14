@@ -66,6 +66,15 @@ export function AuthForm({
         />
       </Field>
 
+      {mode === "signin" && (
+        <Link
+          href="/forgot"
+          className="-mt-1 self-end text-sm font-semibold text-brand"
+        >
+          Forgot password?
+        </Link>
+      )}
+
       {state.error && (
         <p className="text-sm text-[var(--rc-red)]" aria-live="polite">
           {state.error}

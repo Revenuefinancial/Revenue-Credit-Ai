@@ -241,6 +241,160 @@ create policy "dispute-letters: admin write" on storage.objects
   with check (bucket_id = 'dispute-letters' and public.is_admin());
 
 -- ════════════════════════════════════════════════════════════════════
+-- LIFECYCLE + COMPLIANCE  (dispute_items, score_history, agreements)
+-- See migrations/2026-06-11-lifecycle-and-compliance.sql for full notes.
+-- ════════════════════════════════════════════════════════════════════
+
+-- dispute_items: item-level dispute tracking. Round/journey state is derived
+-- from these rows (no separate rounds table). Created when the AI drafts a
+-- round; walked through its lifecycle by the admin as bureaus respond.
+create table if not exists public.dispute_items (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references public.profiles (id) on delete cascade,
+  report_id     uuid references public.credit_reports (id) on delete set null,
+  draft_id      uuid references public.letter_drafts (id) on delete set null,
+  bureau        text not null,
+  creditor      text not null,
+  account_mask  text,
+  item_type     text,
+  reason        text,
+  round         integer not null default 1,
+  status        text not null default 'pending'
+                  check (status in ('pending','sent','deleted','verified','updated','needs_followup')),
+  sent_at         timestamptz,
+  response_due_at timestamptz,
+  resolved_at     timestamptz,
+  outcome_note    text,
+  created_by    uuid references public.profiles (id),
+  created_at    timestamptz not null default now()
+);
+create index if not exists dispute_items_user_id_idx on public.dispute_items (user_id);
+create index if not exists dispute_items_draft_id_idx on public.dispute_items (draft_id);
+
+-- score_history: a client's score per bureau over time (the progress chart).
+create table if not exists public.score_history (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles (id) on delete cascade,
+  bureau      text not null default 'Merged'
+                check (bureau in ('Equifax','Experian','TransUnion','Merged')),
+  score       integer not null check (score between 300 and 850),
+  source      text not null default 'manual'
+                check (source in ('manual','smartcredit','import')),
+  recorded_at date not null default current_date,
+  note        text,
+  created_by  uuid references public.profiles (id),
+  created_at  timestamptz not null default now()
+);
+create index if not exists score_history_user_id_idx on public.score_history (user_id, recorded_at);
+
+-- agreements: CROA service agreement + disclosure acceptance, with a
+-- 3-business-day right-to-cancel window.
+create table if not exists public.agreements (
+  id                    uuid primary key default gen_random_uuid(),
+  user_id               uuid not null references public.profiles (id) on delete cascade,
+  kind                  text not null check (kind in ('service_agreement','croa_disclosure')),
+  version               text not null,
+  full_name             text,
+  accepted_at           timestamptz not null default now(),
+  cancellation_deadline timestamptz,
+  canceled_at           timestamptz,
+  ip                    text,
+  created_at            timestamptz not null default now()
+);
+create index if not exists agreements_user_id_idx on public.agreements (user_id);
+
+alter table public.dispute_items enable row level security;
+alter table public.score_history enable row level security;
+alter table public.agreements    enable row level security;
+
+drop policy if exists "dispute_items: read own or admin" on public.dispute_items;
+drop policy if exists "dispute_items: admin write"        on public.dispute_items;
+create policy "dispute_items: read own or admin" on public.dispute_items
+  for select using (user_id = auth.uid() or public.is_admin());
+create policy "dispute_items: admin write" on public.dispute_items
+  for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "score_history: read own or admin" on public.score_history;
+drop policy if exists "score_history: insert own"        on public.score_history;
+drop policy if exists "score_history: admin write"       on public.score_history;
+create policy "score_history: read own or admin" on public.score_history
+  for select using (user_id = auth.uid() or public.is_admin());
+create policy "score_history: insert own" on public.score_history
+  for insert with check (user_id = auth.uid() or public.is_admin());
+create policy "score_history: admin write" on public.score_history
+  for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "agreements: read own or admin"   on public.agreements;
+drop policy if exists "agreements: insert own"          on public.agreements;
+drop policy if exists "agreements: update own or admin" on public.agreements;
+create policy "agreements: read own or admin" on public.agreements
+  for select using (user_id = auth.uid() or public.is_admin());
+create policy "agreements: insert own" on public.agreements
+  for insert with check (user_id = auth.uid() or public.is_admin());
+create policy "agreements: update own or admin" on public.agreements
+  for update using (user_id = auth.uid() or public.is_admin());
+
+-- ════════════════════════════════════════════════════════════════════
+-- IDENTITY VERIFICATION DOCUMENTS
+-- See migrations/2026-06-16-verification-documents.sql for full notes.
+-- Clients upload photo ID + proof of address + proof of SSN; a human admin
+-- manually approves or rejects each one. Mirrors the credit_reports model.
+-- ════════════════════════════════════════════════════════════════════
+create table if not exists public.verification_documents (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles (id) on delete cascade,
+  category    text not null
+                check (category in ('photo_id', 'proof_of_address', 'proof_of_ssn')),
+  doc_type    text,
+  file_path   text not null,          -- path inside the 'verification-documents' bucket
+  file_name   text not null,
+  file_size   integer,
+  status      text not null default 'pending'
+                check (status in ('pending', 'approved', 'rejected')),
+  review_note text,
+  reviewed_by uuid references public.profiles (id),
+  reviewed_at timestamptz,
+  uploaded_at timestamptz not null default now()
+);
+create index if not exists verification_documents_user_id_idx
+  on public.verification_documents (user_id);
+
+alter table public.verification_documents enable row level security;
+
+drop policy if exists "verification_documents: read own or admin"  on public.verification_documents;
+drop policy if exists "verification_documents: insert own"          on public.verification_documents;
+drop policy if exists "verification_documents: update own or admin" on public.verification_documents;
+
+create policy "verification_documents: read own or admin" on public.verification_documents
+  for select using (user_id = auth.uid() or public.is_admin());
+create policy "verification_documents: insert own" on public.verification_documents
+  for insert with check (user_id = auth.uid());
+create policy "verification_documents: update own or admin" on public.verification_documents
+  for update using (user_id = auth.uid() or public.is_admin());
+
+-- verification-documents bucket (private, path-scoped like credit-reports)
+insert into storage.buckets (id, name, public)
+values ('verification-documents', 'verification-documents', false)
+on conflict (id) do nothing;
+
+drop policy if exists "verification-documents: client read own"   on storage.objects;
+drop policy if exists "verification-documents: client upload own"  on storage.objects;
+drop policy if exists "verification-documents: admin read"         on storage.objects;
+
+create policy "verification-documents: client read own" on storage.objects
+  for select using (
+    bucket_id = 'verification-documents'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+create policy "verification-documents: client upload own" on storage.objects
+  for insert with check (
+    bucket_id = 'verification-documents'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+create policy "verification-documents: admin read" on storage.objects
+  for select using (bucket_id = 'verification-documents' and public.is_admin());
+
+-- ════════════════════════════════════════════════════════════════════
 -- POST-SETUP (manual):
 --   Promote the admin account after Joseph signs up once:
 --     update public.profiles set role = 'admin' where email = 'JOSEPH_EMAIL';

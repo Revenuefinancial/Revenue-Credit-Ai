@@ -16,10 +16,22 @@ const DEFAULT_MODEL = "gpt-4o";
 
 export type Bureau = "Equifax" | "Experian" | "TransUnion";
 
+// A structured, trackable representation of a single disputed item. Emitted
+// alongside the letter text so the app can track each tradeline through its
+// dispute lifecycle (sent → 35-day clock → deleted/verified) instead of just
+// storing an opaque blob of letter text.
+export interface DisputeItemSeed {
+  creditor: string;
+  account_mask: string | null;
+  item_type: string; // collection | charge_off | late_payment | inquiry | balance | duplicate | other
+  reason: string;
+}
+
 export interface DraftedLetter {
   bureau: Bureau;
   subject: string;
   body: string;
+  items: DisputeItemSeed[];
 }
 
 export interface GenerateResult {
@@ -74,7 +86,9 @@ OUTPUT FORMAT — read carefully:
 - ZERO bracketed placeholders. The letter must be fully filled in and mailable as-is. Never output "[", "]", "[YOUR ADDRESS]", "[DATE]", "[ACCOUNT #]", "XXXX", or any fill-in token. Use the consumer details and date provided to you in the user message.
 - If a specific consumer detail (e.g., phone) was NOT provided to you, simply OMIT that line — do not insert a placeholder and do not invent it.
 - Structure each letter as a real business letter: the consumer's name and mailing address block, the date, the bureau's name and official dispute-department mailing address, a "Re:" subject line, the body, and a closing with the consumer's typed name on the signature line.
-- These are DRAFTS for human admin review and approval. Accuracy, restraint, and individualization matter more than volume.`;
+- These are DRAFTS for human admin review and approval. Accuracy, restraint, and individualization matter more than volume.
+
+STRUCTURED ITEMS — in addition to the letter body, return an "items" array for each letter containing one entry per item you disputed in that letter's body — exactly the same items, no more and no fewer. For each: the creditor name as written, the masked account number (lowercase x for hidden digits, or null if none is shown), the item_type, and a one-sentence factual reason. These must correspond exactly to the numbered items in the body; do not list an item in "items" that is not disputed in the body, and do not dispute an item in the body that is missing from "items".`;
 
 const SCHEMA = {
   type: "object",
@@ -100,8 +114,47 @@ const SCHEMA = {
             description:
               "The full letter text, ready to print. Plain text with line breaks; no markdown.",
           },
+          items: {
+            type: "array",
+            description:
+              "One structured entry per item disputed in THIS letter — exactly the items named in the body, no more and no fewer. Used to track each tradeline through its dispute lifecycle.",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                creditor: {
+                  type: "string",
+                  description:
+                    "Creditor/furnisher name exactly as written in the report.",
+                },
+                account_mask: {
+                  type: ["string", "null"],
+                  description:
+                    "The masked/partial account number as shown (digits hidden with lowercase x, e.g. 226071xxxx), or null if the report shows none.",
+                },
+                item_type: {
+                  type: "string",
+                  enum: [
+                    "collection",
+                    "charge_off",
+                    "late_payment",
+                    "inquiry",
+                    "balance",
+                    "duplicate",
+                    "other",
+                  ],
+                },
+                reason: {
+                  type: "string",
+                  description:
+                    "One-sentence factual reason this item is being disputed (the specific inaccurate field).",
+                },
+              },
+              required: ["creditor", "account_mask", "item_type", "reason"],
+            },
+          },
         },
-        required: ["bureau", "subject", "body"],
+        required: ["bureau", "subject", "body", "items"],
       },
     },
   },
@@ -243,6 +296,16 @@ export async function generateLetterDrafts({
       ...l,
       subject: stripMarkdown(l.subject ?? "").trim(),
       body: stripMarkdown(l.body).trim(),
+      items: (l.items ?? [])
+        .filter((it) => it && it.creditor)
+        .map((it) => ({
+          creditor: stripMarkdown(it.creditor).trim(),
+          account_mask: it.account_mask
+            ? stripMarkdown(it.account_mask).trim()
+            : null,
+          item_type: (it.item_type || "other").trim(),
+          reason: stripMarkdown(it.reason ?? "").trim(),
+        })),
     }));
   if (letters.length === 0) {
     throw new Error("The AI did not produce any letters.");

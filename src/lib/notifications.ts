@@ -5,7 +5,8 @@
 // When Joseph opts for GoHighLevel instead, only these two transport functions
 // (sendEmail / sendSMS) need to change — the event helpers below stay the same.
 
-import { BRAND } from "@/lib/config";
+import { BRAND, BOOKING_URL } from "@/lib/config";
+import { baseUrl } from "@/lib/url";
 
 interface EmailArgs {
   to: string;
@@ -71,7 +72,7 @@ export async function sendSMS({ to, body }: SMSArgs): Promise<void> {
 }
 
 // ── Event helpers (called from server actions / webhook) ────────────────
-const appUrl = () => process.env.NEXT_PUBLIC_APP_URL ?? "https://score-logic-pro.vercel.app";
+const appUrl = () => baseUrl();
 
 // Branded email shell — mirrors app/emails/render.mjs and globals.css tokens.
 // Table layout + inline styles for email-client compatibility.
@@ -99,6 +100,80 @@ function shell(title: string, body: string): string {
 </body></html>`;
 }
 
+// Welcome email — sent right after signup so a new client isn't met with
+// silence. If a booking link is configured, we invite them to book onboarding.
+export async function notifyWelcome(to: string | null, fullName?: string | null) {
+  if (!to) return;
+  const first = fullName?.trim()?.split(" ")[0];
+  const bookingCta = BOOKING_URL
+    ? `<p style="margin:16px 0 0;"><a href="${BOOKING_URL}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:10px;">Book your free onboarding call →</a></p>`
+    : "";
+  await sendEmail({
+    to,
+    subject: `Welcome to ${BRAND.name}`,
+    html: shell(
+      `Welcome${first ? `, ${first}` : ""}`,
+      `Your account is ready. Here's how to get started:</p>
+       <ol style="margin:8px 0 0;padding-left:20px;color:#1f2937;font-size:15px;line-height:1.7;">
+         <li>Review &amp; sign your service agreement (required before any work begins).</li>
+         <li>Pull your 3-bureau credit report and upload it.</li>
+         <li>We prepare your dispute letters — you track everything from your dashboard.</li>
+       </ol>
+       <p style="margin:16px 0 0;">Jump in from your <a href="${appUrl()}/dashboard">dashboard</a>.${bookingCta}`,
+    ),
+  });
+}
+
+// ── Admin (operator) alerts ─────────────────────────────────────────────
+// Keeps Joseph in the loop without having to keep refreshing the admin panel.
+// Sent to ADMIN_NOTIFY_EMAIL; a no-op (logged) if that isn't set.
+async function notifyAdmin(subject: string, bodyHtml: string) {
+  const to = process.env.ADMIN_NOTIFY_EMAIL;
+  if (!to) {
+    console.info(`[notify] admin alert skipped (no ADMIN_NOTIFY_EMAIL): "${subject}"`);
+    return;
+  }
+  await sendEmail({ to, subject: `[${BRAND.name}] ${subject}`, html: shell(subject, bodyHtml) });
+}
+
+export async function notifyAdminNewSignup(email: string | null, fullName: string | null) {
+  await notifyAdmin(
+    "New client signed up",
+    `<strong>${fullName ?? "A new client"}</strong> (${email ?? "no email"}) just created an account. They'll appear in your <a href="${appUrl()}/admin">admin panel</a> once they sign the agreement or take an action.`,
+  );
+}
+
+export async function notifyAdminPayment(email: string | null, planName: string) {
+  await notifyAdmin(
+    "Payment received",
+    `${email ?? "A client"} just paid for <strong>${planName}</strong>. Open the <a href="${appUrl()}/admin">admin panel</a> to manage their file.`,
+  );
+}
+
+export async function notifyAdminReportUploaded(email: string | null) {
+  await notifyAdmin(
+    "Credit report uploaded",
+    `${email ?? "A client"} uploaded a credit report and is ready for dispute letters. Review it in the <a href="${appUrl()}/admin">admin panel</a>.`,
+  );
+}
+
+export async function notifyAdminAgreementSigned(email: string | null, fullName: string | null) {
+  await notifyAdmin(
+    "Service agreement signed",
+    `<strong>${fullName ?? "A client"}</strong> (${email ?? "no email"}) signed the service agreement. Note the 3-business-day cancel window before billing or starting paid work.`,
+  );
+}
+
+export async function notifyAdminVerificationUploaded(
+  email: string | null,
+  categoryLabel: string,
+) {
+  await notifyAdmin(
+    "Verification document uploaded",
+    `${email ?? "A client"} uploaded a <strong>${categoryLabel}</strong> for identity verification. Review and approve it in the <a href="${appUrl()}/admin">admin panel</a>.`,
+  );
+}
+
 export async function notifyReportReceived(to: string | null) {
   if (!to) return;
   await sendEmail({
@@ -119,6 +194,42 @@ export async function notifyPaymentSuccess(to: string | null, planName: string) 
     html: shell(
       "Payment confirmed",
       `Your ${planName} plan is active. Next step: upload your credit report (if you haven't yet) from your <a href="${appUrl()}/dashboard">dashboard</a> so we can get started.`,
+    ),
+  });
+}
+
+// Client-facing review outcomes for an uploaded verification document.
+export async function notifyVerificationApproved(
+  to: string | null,
+  categoryLabel: string,
+) {
+  if (!to) return;
+  await sendEmail({
+    to,
+    subject: `Your ${categoryLabel} was approved`,
+    html: shell(
+      "Document approved",
+      `Thanks — your <strong>${categoryLabel}</strong> has been verified. You can see the status of all your verification documents anytime in your <a href="${appUrl()}/dashboard">dashboard</a>.`,
+    ),
+  });
+}
+
+export async function notifyVerificationRejected(
+  to: string | null,
+  categoryLabel: string,
+  reason: string | null,
+) {
+  if (!to) return;
+  const why = reason
+    ? `<p style="margin:12px 0 0;"><strong>Reason:</strong> ${reason}</p>`
+    : "";
+  await sendEmail({
+    to,
+    subject: `Action needed: re-upload your ${categoryLabel}`,
+    html: shell(
+      "We need a new copy of your document",
+      `We couldn't verify your <strong>${categoryLabel}</strong>.${why}
+       <p style="margin:12px 0 0;">Please upload a new copy from your <a href="${appUrl()}/dashboard">dashboard</a> — make sure the image is clear, in focus, and shows the whole document.</p>`,
     ),
   });
 }

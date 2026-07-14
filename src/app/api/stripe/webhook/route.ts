@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PLANS, type PlanId } from "@/lib/config";
-import { notifyPaymentSuccess } from "@/lib/notifications";
+import { notifyPaymentSuccess, notifyAdminPayment } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
 
     const email = session.customer_details?.email ?? session.customer_email;
     await notifyPaymentSuccess(email ?? null, planName ?? "your plan");
+    await notifyAdminPayment(email ?? null, planName ?? "your plan");
   }
 
   return NextResponse.json({ received: true });

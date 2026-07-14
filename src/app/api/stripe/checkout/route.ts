@@ -1,13 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { getSessionUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PLANS, type PlanId } from "@/lib/config";
+import { agreementStatus } from "@/lib/compliance";
+import { baseUrlFromRequest } from "@/lib/url";
+import type { Agreement } from "@/lib/types";
 
 export const runtime = "nodejs";
-
-const appUrl = () =>
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://score-logic-pro.vercel.app";
 
 // Creates a Stripe Checkout Session for the chosen plan and returns its URL.
 // Each checkout is a one-time payment (one package / one dispute round). DFY's
@@ -33,6 +34,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unknown plan" }, { status: 400 });
   }
 
+  // CROA gate: no paid service may begin until the consumer has signed the
+  // service agreement + disclosure. Block checkout and point them to /agreement.
+  const supabase = await createClient();
+  const { data: agreements } = await supabase
+    .from("agreements")
+    .select("*")
+    .eq("user_id", user.id);
+  if (!agreementStatus((agreements as Agreement[] | null) ?? null).accepted) {
+    return NextResponse.json(
+      {
+        error: "Please review and sign the service agreement before paying.",
+        needsAgreement: true,
+      },
+      { status: 403 },
+    );
+  }
+
+  const appUrl = baseUrlFromRequest(req);
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -49,8 +68,8 @@ export async function POST(req: NextRequest) {
         },
       },
     ],
-    success_url: `${appUrl()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl()}/checkout/cancel`,
+    success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${appUrl}/checkout/cancel`,
   });
 
   // Record a pending order so abandoned checkouts are also visible to admin.

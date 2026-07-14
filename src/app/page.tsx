@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BRAND, PLANS, formatPrice, SMARTCREDIT_URL } from "@/lib/config";
+import { FAQS } from "@/lib/faq";
 
 const STEPS = [
   {
@@ -64,6 +65,7 @@ export default function LandingPage() {
           <a href="#how" className="hover:text-ink">How it works</a>
           <a href="#pricing" className="hover:text-ink">Pricing</a>
           <a href="#stories" className="hover:text-ink">Success stories</a>
+          <a href="#faq" className="hover:text-ink">FAQ</a>
           <Link href="/demo" className="hover:text-ink">View demo</Link>
         </div>
         <div className="flex items-center gap-3">
@@ -279,12 +281,60 @@ export default function LandingPage() {
         </p>
       </section>
 
+      {/* Walkthrough video */}
+      <section id="walkthrough" className="mx-auto max-w-3xl px-6 py-20">
+        <div className="mb-8 text-center">
+          <h2 className="text-3xl font-bold tracking-tight">See it in action</h2>
+          <p className="mt-2 text-muted">
+            A quick walkthrough of the whole platform — about three minutes.
+          </p>
+        </div>
+        <video
+          src="/tutorial.mp4"
+          controls
+          playsInline
+          preload="metadata"
+          className="w-full rounded-2xl border border-line shadow-[0_20px_50px_-20px_rgba(10,31,68,0.25)]"
+        />
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="bg-surface border-t border-line">
+        <div className="mx-auto max-w-3xl px-6 py-20">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold tracking-tight">
+              Frequently asked questions
+            </h2>
+            <p className="mt-2 text-muted">
+              Everything you need to know before you start.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {FAQS.map((f) => (
+              <details
+                key={f.q}
+                className="group rounded-2xl border border-line bg-bg px-5 py-4 transition hover:border-brand/40"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-semibold text-ink [&::-webkit-details-marker]:hidden">
+                  {f.q}
+                  <span className="flex-none text-2xl font-light leading-none text-muted transition-transform duration-200 group-open:rotate-45">
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-muted">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-muted md:flex-row">
           <span>© {new Date().getFullYear()} {BRAND.name}. A {BRAND.parent} company.</span>
           <div className="flex gap-5">
             <Link href="/how-it-works" className="hover:text-ink">How it works</Link>
+            <a href="#faq" className="hover:text-ink">FAQ</a>
             <Link href="/demo" className="hover:text-ink">Demo</Link>
             <Link href="/terms" className="hover:text-ink">Terms</Link>
             <Link href="/privacy" className="hover:text-ink">Privacy</Link>

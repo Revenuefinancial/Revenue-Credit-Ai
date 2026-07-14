@@ -3,6 +3,10 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { notifyWelcome, notifyAdminNewSignup } from "@/lib/notifications";
+import { baseUrl } from "@/lib/url";
+
+const appUrl = () => baseUrl();
 
 export interface AuthState {
   error?: string;
@@ -62,6 +66,11 @@ export async function signUp(
   });
   if (error) return { error: error.message };
 
+  // Welcome the new client + ping the admin. Both are best-effort no-ops when
+  // their transport keys aren't set, so they never block signup.
+  await notifyWelcome(parsed.data.email, fullName);
+  await notifyAdminNewSignup(parsed.data.email, fullName);
+
   // If email confirmation is enabled, there's no session yet.
   if (!data.session) {
     return {
@@ -70,6 +79,65 @@ export async function signUp(
   }
 
   redirect(safeNext(formData.get("next")));
+}
+
+const emailOnly = z.object({
+  email: z.string().email("Enter a valid email address."),
+});
+
+// Step 1 of password reset: email the user a recovery link. We always return
+// the same success message (even for unknown emails) to avoid leaking which
+// addresses have accounts.
+export async function requestPasswordReset(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const parsed = emailOnly.safeParse({ email: formData.get("email") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid email." };
+  }
+
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: `${appUrl()}/auth/callback?next=/reset`,
+  });
+
+  return {
+    message:
+      "If an account exists for that email, we've sent a password reset link. Check your inbox.",
+  };
+}
+
+// Step 2 of password reset: set the new password. The recovery link puts the
+// user into an authenticated session (via /auth/callback), so updateUser works.
+export async function updatePassword(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+  if (password !== confirm) {
+    return { error: "Passwords do not match." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      error:
+        "Your reset link has expired or is invalid. Request a new one from the forgot-password page.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+
+  return { message: "Password updated. You can now use it to sign in." };
 }
 
 export async function signOut(): Promise<void> {
