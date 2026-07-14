@@ -215,6 +215,16 @@ function DraftCard({
                 Reject
               </button>
             )}
+            {draft.status === "approved" && (
+              <a
+                href={`/api/letters/draft/${draft.id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-2"
+              >
+                Download packet (PDF)
+              </a>
+            )}
           </div>
           {dirty && (
             <p className="text-xs text-[var(--rc-amber)]">

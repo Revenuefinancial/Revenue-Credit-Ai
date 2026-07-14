@@ -32,7 +32,17 @@ export default async function LetterPrintPage({
           <Link href="/dashboard" className="text-sm font-semibold text-brand">
             ← Back to dashboard
           </Link>
-          <PrintButton />
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/letters/draft/${id}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-rc border border-line bg-surface px-3 py-1.5 text-sm font-semibold text-brand transition hover:bg-line-soft"
+            >
+              Download with ID docs (PDF)
+            </a>
+            <PrintButton />
+          </div>
         </div>
       </header>
 

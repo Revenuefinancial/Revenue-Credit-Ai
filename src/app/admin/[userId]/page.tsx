@@ -9,11 +9,25 @@ import type {
   CreditReport,
   DisputeLetter,
   LetterDraft,
+  DisputeItem,
+  Agreement,
+  ScoreEntry,
+  VerificationDocument,
 } from "@/lib/types";
+import { isWin } from "@/lib/dispute";
+import {
+  agreementStatus,
+  refundWindow,
+  REFUND_MIN_ITEMS,
+  REFUND_WINDOW_DAYS,
+} from "@/lib/compliance";
 import { UploadLetterForm } from "../upload-letter-form";
 import { AdminDownloadButton } from "../admin-download-button";
 import { AiLetters } from "../ai-letters";
 import { ClientAddressForm } from "../client-address-form";
+import { DisputeItemsPanel } from "../dispute-items-panel";
+import { ScoreHistoryPanel } from "../score-history-panel";
+import { VerificationReviewPanel } from "../verification-panel";
 
 // AI generation can take up to a minute on large reports.
 export const maxDuration = 60;
@@ -35,34 +49,78 @@ export default async function AdminClientPage({
   if (!profile) notFound();
   const prof = profile as Profile;
 
-  const [{ data: orders }, { data: reports }, { data: letters }, { data: drafts }] =
-    await Promise.all([
-      db
-        .from("orders")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
-      db
-        .from("credit_reports")
-        .select("*")
-        .eq("user_id", userId)
-        .order("uploaded_at", { ascending: false }),
-      db
-        .from("dispute_letters")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
-      db
-        .from("letter_drafts")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: orders },
+    { data: reports },
+    { data: letters },
+    { data: drafts },
+    { data: items },
+    { data: agreements },
+    { data: scores },
+    { data: verifications },
+  ] = await Promise.all([
+    db
+      .from("orders")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+    db
+      .from("credit_reports")
+      .select("*")
+      .eq("user_id", userId)
+      .order("uploaded_at", { ascending: false }),
+    db
+      .from("dispute_letters")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+    db
+      .from("letter_drafts")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+    db
+      .from("dispute_items")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+    db
+      .from("agreements")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+    db
+      .from("score_history")
+      .select("*")
+      .eq("user_id", userId)
+      .order("recorded_at", { ascending: false }),
+    db
+      .from("verification_documents")
+      .select("*")
+      .eq("user_id", userId)
+      .order("uploaded_at", { ascending: false }),
+  ]);
 
   const allOrders = (orders as Order[] | null) ?? [];
   const allReports = (reports as CreditReport[] | null) ?? [];
   const allLetters = (letters as DisputeLetter[] | null) ?? [];
   const allDrafts = (drafts as LetterDraft[] | null) ?? [];
+  const allItems = (items as DisputeItem[] | null) ?? [];
+  const allAgreements = (agreements as Agreement[] | null) ?? [];
+  const allScores = (scores as ScoreEntry[] | null) ?? [];
+  const allVerifications =
+    (verifications as VerificationDocument[] | null) ?? [];
+
+  // Compliance + refund-window summary for this client.
+  const compliance = agreementStatus(allAgreements);
+  const activeOrders = allOrders.filter(
+    (o) => o.status === "active" || o.status === "completed",
+  );
+  const serviceStart = activeOrders.map((o) => o.created_at).sort()[0] ?? null;
+  const refund = refundWindow(serviceStart);
+  const wins = allItems.filter((i) => isWin(i.status)).length;
+  const fmtDate = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleDateString() : "—";
 
   return (
     <div className="min-h-screen bg-bg">
@@ -83,6 +141,85 @@ export default async function AdminClientPage({
           {prof.phone ? ` · ${prof.phone}` : ""} · joined{" "}
           {new Date(prof.created_at).toLocaleDateString()}
         </p>
+
+        {/* Compliance + refund window — what you must know before billing / refunds */}
+        <Section title="Compliance & service window">
+          <dl className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted">
+                Agreement
+              </dt>
+              <dd className="mt-1 text-sm font-semibold text-ink">
+                {compliance.canceled
+                  ? "Canceled"
+                  : compliance.accepted
+                    ? `Signed ${fmtDate(compliance.acceptedAt)}`
+                    : "Not signed"}
+              </dd>
+              {compliance.accepted && compliance.cancelable && (
+                <dd className="mt-1 text-xs font-semibold text-[var(--rc-amber)]">
+                  In 3-business-day cancel window until{" "}
+                  {fmtDate(compliance.deadline)} — don&apos;t bill or start work
+                  yet.
+                </dd>
+              )}
+              {compliance.accepted && !compliance.cancelable && (
+                <dd className="mt-1 text-xs text-muted">
+                  Cancel window passed — cleared to perform paid work.
+                </dd>
+              )}
+              {!compliance.accepted && !compliance.canceled && (
+                <dd className="mt-1 text-xs text-muted">
+                  Client must sign the disclosure + agreement before any paid
+                  service.
+                </dd>
+              )}
+            </div>
+
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted">
+                Service window
+              </dt>
+              <dd className="mt-1 text-sm font-semibold text-ink">
+                {refund.started
+                  ? refund.elapsed
+                    ? "180-day window closed"
+                    : `Day ${refund.daysIn} of ${REFUND_WINDOW_DAYS}`
+                  : "Not started"}
+              </dd>
+              {refund.started && (
+                <dd className="mt-1 text-xs text-muted">
+                  Started {fmtDate(refund.startedAt)}
+                  {!refund.elapsed && ` · ${refund.daysLeft} days left`}
+                </dd>
+              )}
+            </div>
+
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted">
+                Results vs. refund floor
+              </dt>
+              <dd
+                className={`mt-1 text-sm font-semibold ${
+                  wins >= REFUND_MIN_ITEMS
+                    ? "text-[var(--rc-green)]"
+                    : refund.elapsed
+                      ? "text-[var(--rc-red)]"
+                      : "text-ink"
+                }`}
+              >
+                {wins} of {REFUND_MIN_ITEMS} removed/corrected
+              </dd>
+              <dd className="mt-1 text-xs text-muted">
+                {wins >= REFUND_MIN_ITEMS
+                  ? "Meets the 3-item floor — no refund owed on that basis."
+                  : wins === 0
+                    ? "Zero so far — 100% refund risk if none by day 180."
+                    : "Below the 3-item floor — 50% refund risk if not met by day 180."}
+              </dd>
+            </div>
+          </dl>
+        </Section>
 
         {/* Payments / orders */}
         <Section title="Payments & service selection">
@@ -149,6 +286,11 @@ export default async function AdminClientPage({
           )}
         </Section>
 
+        {/* Identity verification documents — manual approve / reject */}
+        <Section title="Identity verification">
+          <VerificationReviewPanel docs={allVerifications} />
+        </Section>
+
         {/* Client mailing address (printed on generated letters) */}
         <Section title="Client mailing address">
           <ClientAddressForm
@@ -164,6 +306,16 @@ export default async function AdminClientPage({
             reports={allReports}
             drafts={allDrafts}
           />
+        </Section>
+
+        {/* Dispute-item lifecycle tracking */}
+        <Section title="Dispute tracking & outcomes">
+          <DisputeItemsPanel userId={prof.id} items={allItems} />
+        </Section>
+
+        {/* Score history (logged by admin or self-reported by client) */}
+        <Section title="Score history">
+          <ScoreHistoryPanel scores={allScores} />
         </Section>
 
         {/* Upload a dispute letter back */}
@@ -187,11 +339,21 @@ export default async function AdminClientPage({
                       <span className="block text-xs text-muted">{l.notes}</span>
                     )}
                   </span>
-                  <AdminDownloadButton
-                    bucket="dispute-letters"
-                    path={l.file_path}
-                    label="Download"
-                  />
+                  <div className="flex flex-none items-center gap-2">
+                    <AdminDownloadButton
+                      bucket="dispute-letters"
+                      path={l.file_path}
+                      label="Download"
+                    />
+                    <a
+                      href={`/api/letters/file/${l.id}/pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-rc bg-brand px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-2"
+                    >
+                      + ID docs (PDF)
+                    </a>
+                  </div>
                 </li>
               ))}
             </ul>
