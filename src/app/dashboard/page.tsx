@@ -178,7 +178,7 @@ export default async function DashboardPage() {
               rel="noopener noreferrer"
               className="flex-none rounded-rc bg-brand px-5 py-3 text-center font-semibold text-white transition hover:bg-brand-2"
             >
-              Book a call ↗
+              📅 Book My Onboarding Call
             </a>
           </div>
         )}

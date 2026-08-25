@@ -66,7 +66,10 @@ export const SMARTCREDIT_URL =
   process.env.NEXT_PUBLIC_SMARTCREDIT_URL ??
   "https://www.smartcredit.com/?PID=98507";
 
-// Onboarding-call booking link (Calendly / GoHighLevel / etc). Set this to the
-// client's existing calendar URL and a "Book your onboarding call" card appears
-// on the client dashboard. Leave empty to hide the card entirely.
-export const BOOKING_URL = process.env.NEXT_PUBLIC_BOOKING_URL ?? "";
+// Onboarding-call booking link (Calendly / GoHighLevel / etc). Public URL shown
+// in a client-facing "Book My Onboarding Call" button on the homepage and
+// dashboard. Hardcoded default (like SMARTCREDIT_URL above) so it bakes into the
+// statically prerendered homepage; overridable via env. Empty = buttons hidden.
+export const BOOKING_URL =
+  process.env.NEXT_PUBLIC_BOOKING_URL ||
+  "https://api.leadconnectorhq.com/widget/booking/EiJZLTaQmL3uIc0WtvsX";

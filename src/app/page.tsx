@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BRAND, PLANS, formatPrice, SMARTCREDIT_URL } from "@/lib/config";
+import { BRAND, PLANS, formatPrice, SMARTCREDIT_URL, BOOKING_URL } from "@/lib/config";
 import { FAQS } from "@/lib/faq";
 
 const STEPS = [
@@ -115,6 +115,16 @@ export default function LandingPage() {
             >
               See how it works
             </a>
+            {BOOKING_URL && (
+              <a
+                href={BOOKING_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-[12px] border border-brand bg-brand/5 px-6 py-3 font-semibold text-brand transition hover:bg-brand/10"
+              >
+                📅 Book My Onboarding Call
+              </a>
+            )}
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-muted">
             <span style={{ color: "var(--rc-amber)" }}>★★★★★</span>
