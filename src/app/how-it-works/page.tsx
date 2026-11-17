@@ -76,7 +76,7 @@ const ADMIN_STEPS = [
   {
     n: 7,
     h: "Stay compliant and on top of refunds",
-    p: "Every client shows their signed-agreement status and 3-business-day cancel window, plus a 180-day service clock and how many items you've removed against the refund-policy floor — so you always know who's safe to bill and who's at refund risk.",
+    p: "Every client shows their signed-agreement status and 3-business-day cancel window, plus a 180-day service clock and how many items you've removed against the refund-policy floor — so you always know who can still cancel for a full refund and who's at refund risk.",
   },
 ];
 

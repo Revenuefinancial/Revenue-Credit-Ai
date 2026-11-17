@@ -152,7 +152,8 @@ export default async function DashboardPage() {
               <strong>{fmtDeadline(agreement.deadline)}</strong>
               {agreement.daysLeft !== null &&
                 ` (${agreement.daysLeft} day${agreement.daysLeft === 1 ? "" : "s"} left)`}
-              . If you cancel within this window you will not be charged.
+              . If you cancel within this window, anything you&apos;ve paid is
+              refunded in full.
             </p>
             <div className="mt-3">
               <CancelAgreementButton />

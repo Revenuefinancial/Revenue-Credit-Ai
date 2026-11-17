@@ -398,8 +398,8 @@ function AgreementCell({ compliance }: { compliance: AgreementStatus }) {
     label = "In cancel window";
     cls = "bg-[var(--rc-amber)]/10 text-[var(--rc-amber)]";
     sub = compliance.deadline
-      ? `Hold billing until ${new Date(compliance.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — don't bill yet`
-      : "don't bill yet";
+      ? `Can cancel for a full refund until ${new Date(compliance.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" })}`
+      : "Can cancel for a full refund";
   } else if (compliance.accepted) {
     label = "Signed";
     cls = "bg-[var(--rc-green)]/10 text-[var(--rc-green)]";
