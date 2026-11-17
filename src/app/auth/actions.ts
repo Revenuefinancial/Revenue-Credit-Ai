@@ -18,6 +18,21 @@ const credentials = z.object({
   password: z.string().min(8, "Password must be at least 8 characters."),
 });
 
+// supabase-js surfaces Node's raw "fetch failed" when the server can't reach
+// Supabase at all (paused project, wrong NEXT_PUBLIC_SUPABASE_URL, DNS).
+// Log the real cause for the server logs and show users a friendly message.
+function authErrorMessage(error: { message: string; name?: string; cause?: unknown }): string {
+  const unreachable =
+    error.name === "AuthRetryableFetchError" || /fetch failed/i.test(error.message);
+  if (!unreachable) return error.message;
+  console.error("[auth] Supabase unreachable", {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "(NEXT_PUBLIC_SUPABASE_URL not set)",
+    message: error.message,
+    cause: error.cause,
+  });
+  return "We couldn't reach our sign-in service. Please try again in a few minutes.";
+}
+
 function safeNext(next: FormDataEntryValue | null): string {
   const value = typeof next === "string" ? next : "";
   // Only allow internal paths — never an absolute URL (open-redirect guard).
@@ -38,7 +53,7 @@ export async function signIn(
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: error.message };
+  if (error) return { error: authErrorMessage(error) };
 
   redirect(safeNext(formData.get("next")));
 }
@@ -64,7 +79,7 @@ export async function signUp(
     password: parsed.data.password,
     options: { data: { full_name: fullName, phone } },
   });
-  if (error) return { error: error.message };
+  if (error) return { error: authErrorMessage(error) };
 
   // Welcome the new client + ping the admin. Both are best-effort no-ops when
   // their transport keys aren't set, so they never block signup.
@@ -135,7 +150,7 @@ export async function updatePassword(
   }
 
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: error.message };
+  if (error) return { error: authErrorMessage(error) };
 
   return { message: "Password updated. You can now use it to sign in." };
 }
