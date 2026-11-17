@@ -154,6 +154,8 @@ export default async function AdminPage() {
         wins,
         refund,
         verification: verification.state,
+        joinedAt: c.created_at,
+        serviceStart,
       };
     });
 
@@ -250,6 +252,7 @@ export default async function AdminPage() {
             <thead className="border-b border-line bg-bg/50 text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-5 py-3">Client</th>
+                <th className="px-5 py-3">Started</th>
                 <th className="px-5 py-3">Plan</th>
                 <th className="px-5 py-3">Order</th>
                 <th className="px-5 py-3">Agreement</th>
@@ -261,7 +264,7 @@ export default async function AdminPage() {
             <tbody className="divide-y divide-line">
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-8 text-center text-muted">
+                  <td colSpan={8} className="px-5 py-8 text-center text-muted">
                     No clients yet.
                   </td>
                 </tr>
@@ -285,6 +288,14 @@ export default async function AdminPage() {
                       </span>
                       <VerificationBadge state={r.verification} />
                     </div>
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-3">
+                    <div className="text-ink-2">{formatDay(r.joinedAt)}</div>
+                    {r.serviceStart && (
+                      <div className="mt-0.5 text-xs text-muted">
+                        Service began {formatDay(r.serviceStart)}
+                      </div>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-ink-2">{r.plan}</td>
                   <td className="px-5 py-3">
@@ -482,4 +493,16 @@ function StatusBadge({ status }: { status: string }) {
       {status}
     </span>
   );
+}
+
+// Calendar day in Eastern time (the business's time zone) so a late-evening
+// signup doesn't show as the next day on a UTC server.
+function formatDay(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "America/New_York",
+  });
 }
