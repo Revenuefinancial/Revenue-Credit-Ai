@@ -87,8 +87,9 @@ export default async function AgreementPage() {
         )}
         {status.canceled && (
           <div className="mt-4 rounded-rc border border-[var(--rc-red)]/40 bg-[var(--rc-red)]/10 p-4 text-sm text-ink-2">
-            <strong>Canceled.</strong> You canceled this agreement and have not
-            been charged. Sign again below if you&apos;d like to proceed.
+            <strong>Canceled.</strong> You canceled this agreement, and anything
+            you paid has been refunded in full. Sign again below if you&apos;d
+            like to proceed.
           </div>
         )}
 

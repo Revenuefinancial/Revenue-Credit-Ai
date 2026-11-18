@@ -9,7 +9,7 @@ export function CancelAgreementButton() {
   const [err, setErr] = useState<string | null>(null);
 
   function onCancel() {
-    if (!confirm("Cancel your agreement? You will not be charged.")) return;
+    if (!confirm("Cancel your agreement? Anything you've paid will be refunded in full.")) return;
     setMsg(null);
     setErr(null);
     startTransition(async () => {

@@ -651,7 +651,7 @@ const DEMO_ROWS = [
     letters: 0,
     paid: 3900,
     agreement: "In cancel window" as const,
-    agreementSub: "2 days left — don't bill yet",
+    agreementSub: "2 days left to cancel for a full refund",
     disputed: 0,
     wins: 0,
     window: null,

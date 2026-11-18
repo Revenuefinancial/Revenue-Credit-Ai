@@ -38,8 +38,11 @@ export default function TermsPage() {
       <H2>4. Payments</H2>
       <p>
         Fees are displayed at checkout and processed securely through Stripe.
-        Done-For-You rounds are billed per round. Except where required by law,
-        fees are non-refundable once work has begun.
+        Your card is charged in full at checkout, and Done-For-You rounds are
+        billed per round. If you cancel your service agreement within three
+        business days of signing, your payment is refunded in full. Otherwise,
+        except as provided in our refund policy or where required by law, fees
+        are non-refundable once work has begun.
       </p>
 
       <H2>5. Cancellation</H2>

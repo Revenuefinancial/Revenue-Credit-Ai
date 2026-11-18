@@ -18,7 +18,9 @@
 import type { Agreement, AgreementKind } from "@/lib/types";
 
 // Re-collect acceptance whenever the legal text materially changes.
-export const AGREEMENT_VERSION = "2026-06-1";
+// 2026-11-1: billing changed to charge at checkout, with a full refund for
+// cancellations inside the 3-business-day window (client's instruction).
+export const AGREEMENT_VERSION = "2026-11-1";
 
 // The two artifacts a CROA-compliant signup must capture.
 export const REQUIRED_KINDS: AgreementKind[] = [
@@ -180,7 +182,7 @@ export const CONTRACT_POINTS: { heading: string; body: string }[] = [
   },
   {
     heading: "What we charge",
-    body: "Fees are shown on your dashboard before you pay, and are charged only after this agreement is signed and the applicable cancellation period has passed. We do not charge for services before they are performed.",
+    body: "Fees are shown on your dashboard before you pay. You can only purchase a plan after signing this agreement, and your card is charged in full at checkout. If you cancel within three (3) business days of signing, that payment is refunded in full (see \"Your right to cancel\" below).",
   },
   {
     heading: "Expected timeline",
@@ -196,7 +198,7 @@ export const CONTRACT_POINTS: { heading: string; body: string }[] = [
   },
   {
     heading: "Your right to cancel",
-    body: "You may cancel this agreement for any reason within three (3) business days of signing, at no charge, by emailing us. If you cancel within this period you will not be billed.",
+    body: "You may cancel this agreement for any reason within three (3) business days of signing, at no cost to you, from your dashboard or by emailing us. If you cancel within this period, any payment you have made is refunded in full to your original payment method. Refunds typically reach your card within 5–10 business days.",
   },
   {
     heading: "Honest disputes only",
